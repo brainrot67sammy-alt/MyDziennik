@@ -439,4 +439,491 @@
       ok.classList.remove('d-none');
       document.getElementById('regFirstName').value = '';
       document.getElementById('regLastName').value = '';
-      document.getElementById('regUsername').value = 
+      document.getElementById('regUsername').value = '';
+      document.getElementById('regPassword').value = '';
+      document.getElementById('regSecretWord').value = '';
+      document.getElementById('regVerificationCode').value = '';
+    }
+
+    function showApp() {
+      document.getElementById('auth').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+      document.getElementById('userInfo').textContent = `${currentUser.firstName} ${currentUser.lastName} (${currentUser.role === 'teacher' ? 'Nauczyciel' : 'Uczeń'})`;
+      loadSidebar();
+      showDashboard();
+    }
+
+    function doLogout() {
+      currentUser = null;
+      clearSession();
+      document.getElementById('auth').style.display = 'block';
+      document.getElementById('app').style.display = 'none';
+      document.getElementById('loginUsername').value = '';
+      document.getElementById('loginPassword').value = '';
+      document.getElementById('loginError').classList.add('d-none');
+      showToast('Wylogowano');
+    }
+
+    function loadSidebar() {
+      const nav = document.getElementById('sideNav');
+      nav.innerHTML = '';
+      const items = [
+        { name: 'Pulpit', icon: 'house-fill', action: 'showDashboard()' },
+        { name: 'Oceny', icon: 'star-fill', action: 'showGrades()' },
+        { name: 'Frekwencja', icon: 'calendar-check', action: 'showAttendance()' },
+        { name: 'Plan lekcji', icon: 'calendar-event', action: 'showTimetable()' },
+        { name: 'Testy', icon: 'pencil-square', action: 'showTests()' },
+        { name: 'Zadania', icon: 'list-check', action: 'showHomework()' },
+        { name: 'Komunikator', icon: 'chat-dots', action: 'showChat()' },
+        { name: 'Ogłoszenia', icon: 'megaphone', action: 'showAnnouncements()' }
+      ];
+      if (currentUser.role === 'teacher') {
+        items.push({ name: 'Zarządzanie', icon: 'gear', action: 'showManagement()' });
+      }
+      items.forEach(item => {
+        const a = document.createElement('a');
+        a.href = '#';
+        a.className = 'nav-link text-dark';
+        a.innerHTML = `<i class="bi bi-${item.icon}"></i> ${item.name}`;
+        a.onclick = (e) => { e.preventDefault(); eval(item.action); };
+        nav.appendChild(a);
+      });
+    }
+
+    function showDashboard() {
+      const cont = document.getElementById('content');
+      cont.innerHTML = `
+        <div class="row">
+          <div class="col-md-6">
+            <div class="card stat-card">
+              <div class="card-body">
+                <h6 class="card-title text-muted">Średnia ocen</h6>
+                <h3>${calculateGradeAverage().toFixed(2)}</h3>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="card stat-card">
+              <div class="card-body">
+                <h6 class="card-title text-muted">Nieobecności</h6>
+                <h3>${(db.attendance || []).filter(a => a.studentId === currentUser.id && a.status === 'nieobecny').length}</h3>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card mt-4">
+          <div class="card-header">Ostatnie oceny</div>
+          <div class="card-body">
+            ${(db.grades || []).filter(g => g.studentId === currentUser.id).slice(-5).map(g => 
+              `<div class="d-flex justify-content-between mb-2">
+                <span>${g.subject} - ${g.topic}</span>
+                <span class="grade-badge ${gradeClass(g.value)}">${g.value}</span>
+              </div>`
+            ).join('') || '<p class="text-muted">Brak ocen</p>'}
+          </div>
+        </div>
+      `;
+    }
+
+    function calculateGradeAverage() {
+      const grades = (db.grades || []).filter(g => g.studentId === currentUser.id);
+      if (!grades.length) return 0;
+      const vals = grades.map(g => parseFloat(String(g.value).replace(',', '.').replace('+', '.25').replace('-', '-.25'))).filter(v => !isNaN(v));
+      return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+    }
+
+    function showGrades() {
+      const cont = document.getElementById('content');
+      const grades = (db.grades || []).filter(g => g.studentId === currentUser.id);
+      cont.innerHTML = `
+        <div class="card">
+          <div class="card-header">
+            Oceny
+            ${currentUser.role === 'teacher' ? `<button class="btn btn-sm btn-primary float-end" onclick="editGradeTeacher()">+ Dodaj</button>` : ''}
+          </div>
+          <table class="table table-sm mb-0">
+            <thead>
+              <tr><th>Przedmiot</th><th>Temat</th><th>Ocena</th><th>Data</th></tr>
+            </thead>
+            <tbody>
+              ${grades.map(g => `
+                <tr>
+                  <td>${g.subject}</td>
+                  <td>${g.topic}</td>
+                  <td><span class="grade-badge ${gradeClass(g.value)}">${g.value}</span></td>
+                  <td>${new Date(g.date).toLocaleDateString('pl-PL')}</td>
+                </tr>
+              `).join('') || '<tr><td colspan="4" class="text-center text-muted">Brak ocen</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    function editGradeTeacher() {
+      if (currentUser.role !== 'teacher') return;
+      const subject = prompt('Przedmiot:');
+      const topic = prompt('Temat:');
+      const value = prompt('Ocena:');
+      const studentId = prompt('ID ucznia:');
+      if (subject && topic && value && studentId) {
+        db.grades.push({ id: uid(), studentId, subject, topic, value, date: new Date().toISOString() });
+        saveDB(db);
+        showToast('Ocena dodana');
+        showGrades();
+      }
+    }
+
+    function showAttendance() {
+      const cont = document.getElementById('content');
+      const att = (db.attendance || []).filter(a => a.studentId === currentUser.id);
+      cont.innerHTML = `
+        <div class="card">
+          <div class="card-header">Frekwencja</div>
+          <table class="table table-sm mb-0">
+            <thead>
+              <tr><th>Data</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              ${att.map(a => `
+                <tr>
+                  <td>${new Date(a.date).toLocaleDateString('pl-PL')}</td>
+                  <td>${statusBadge(a.status)}</td>
+                </tr>
+              `).join('') || '<tr><td colspan="2" class="text-center text-muted">Brak danych</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    function showTimetable() {
+      const cont = document.getElementById('content');
+      const days = ['Poniedziałek', 'Wtorek', 'Środa', 'Czwartek', 'Piątek'];
+      const tt = db.timetable.filter(t => t.classId === currentUser.classId);
+      cont.innerHTML = `
+        <div class="card">
+          <div class="card-header">
+            Plan lekcji
+            ${currentUser.role === 'teacher' ? `<button class="btn btn-sm btn-primary float-end" onclick="editTimetable()">Edytuj</button>` : ''}
+          </div>
+          <table class="table table-sm mb-0">
+            <thead>
+              <tr><th>Godzina</th>${days.map(d => `<th>${d}</th>`).join('')}</tr>
+            </thead>
+            <tbody>
+              ${db.hourSlots.map((slot, idx) => `
+                <tr>
+                  <td><small>${slot}</small></td>
+                  ${days.map(day => {
+                    const lesson = tt.find(t => t.slot === idx && t.dayOfWeek === days.indexOf(day));
+                    return `<td class="timetable-cell"><small>${lesson ? `${lesson.subject} (${lesson.teacher})` : '-'}</small></td>`;
+                  }).join('')}
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    function editTimetable() {
+      if (currentUser.role !== 'teacher') return;
+      showToast('Edycja planu - funkcja w trakcie');
+    }
+
+    function showTests() {
+      const cont = document.getElementById('content');
+      const tests = currentUser.role === 'teacher' ? (db.tests || []) : (db.tests || []).filter(t => t.status === 'active');
+      cont.innerHTML = `
+        <div class="card">
+          <div class="card-header">
+            Testy
+            ${currentUser.role === 'teacher' ? `<button class="btn btn-sm btn-primary float-end" onclick="createTest()">+ Nowy test</button>` : ''}
+          </div>
+          <div class="card-body">
+            ${tests.map(t => `
+              <div class="card q-card mb-2">
+                <div class="card-body">
+                  <h6 class="card-title">${t.title}</h6>
+                  <p class="card-text small text-muted">${t.description}</p>
+                  <span class="badge ${t.status === 'active' ? 'test-status-active' : 'test-status-draft'}">${t.status}</span>
+                  ${currentUser.role === 'student' && t.status === 'active' ? `<button class="btn btn-sm btn-primary float-end" onclick="startTest('${t.id}')">Rozwiąż</button>` : ''}
+                  ${currentUser.role === 'teacher' ? `<button class="btn btn-sm btn-warning float-end me-2" onclick="editTest('${t.id}')">Edytuj</button>` : ''}
+                </div>
+              </div>
+            `).join('') || '<p class="text-muted">Brak testów</p>'}
+          </div>
+        </div>
+      `;
+    }
+
+    function createTest() {
+      if (currentUser.role !== 'teacher') return;
+      const title = prompt('Tytuł testu:');
+      const desc = prompt('Opis:');
+      if (title && desc) {
+        db.tests.push({ id: uid(), title, description: desc, status: 'draft', questions: [], createdBy: currentUser.id, createdAt: new Date().toISOString() });
+        saveDB(db);
+        showToast('Test utworzony');
+        showTests();
+      }
+    }
+
+    function editTest(testId) {
+      if (currentUser.role !== 'teacher') return;
+      editingTestId = testId;
+      showToast('Edycja testów - funkcja w trakcie');
+    }
+
+    function startTest(testId) {
+      const test = db.tests.find(t => t.id === testId);
+      if (!test) return;
+      const cont = document.getElementById('content');
+      cont.innerHTML = `
+        <div class="card">
+          <div class="card-header">${test.title}</div>
+          <div class="card-body">
+            <p>${test.description}</p>
+            <div class="alert alert-info">Pytania będą tutaj. Funkcja w trakcie implementacji.</div>
+            <button class="btn btn-secondary" onclick="showTests()">Wróć</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function showHomework() {
+      const cont = document.getElementById('content');
+      const hw = currentUser.role === 'student' ? (db.homework || []).filter(h => h.classId === currentUser.classId) : (db.homework || []);
+      cont.innerHTML = `
+        <div class="card">
+          <div class="card-header">
+            Zadania
+            ${currentUser.role === 'teacher' ? `<button class="btn btn-sm btn-primary float-end" onclick="createHomework()">+ Dodaj zadanie</button>` : ''}
+          </div>
+          <div class="card-body">
+            ${hw.map(h => `
+              <div class="card mb-3">
+                <div class="card-body">
+                  <h6>${h.title}</h6>
+                  <p class="small text-muted">${h.description}</p>
+                  <small><strong>Termin:</strong> ${new Date(h.deadline).toLocaleDateString('pl-PL')}</small>
+                  ${currentUser.role === 'student' ? `<button class="btn btn-sm btn-primary float-end" onclick="submitHomework('${h.id}')">Wyślij</button>` : ''}
+                </div>
+              </div>
+            `).join('') || '<p class="text-muted">Brak zadań</p>'}
+          </div>
+        </div>
+      `;
+    }
+
+    function createHomework() {
+      if (currentUser.role !== 'teacher') return;
+      const title = prompt('Tytuł:');
+      const desc = prompt('Opis:');
+      const deadline = prompt('Termin (YYYY-MM-DD):');
+      if (title && desc && deadline) {
+        db.homework.push({ id: uid(), title, description: desc, deadline, classId: currentUser.classId, createdBy: currentUser.id });
+        saveDB(db);
+        showToast('Zadanie dodane');
+        showHomework();
+      }
+    }
+
+    function submitHomework(hwId) {
+      const hw = db.homework.find(h => h.id === hwId);
+      if (!hw) return;
+      const answer = prompt('Twoja odpowiedź:');
+      if (answer) {
+        db.homework_submissions.push({ id: uid(), homeworkId: hwId, studentId: currentUser.id, answer, submittedAt: new Date().toISOString() });
+        saveDB(db);
+        showToast('Zadanie wysłane');
+      }
+    }
+
+    function showChat() {
+      const cont = document.getElementById('content');
+      const users = db.users.filter(u => u.id !== currentUser.id);
+      const msgs = (db.messages || []).filter(m => (m.senderId === currentUser.id || m.receiverId === currentUser.id) && (activeChatPartnerId === null || m.senderId === activeChatPartnerId || m.receiverId === activeChatPartnerId));
+      cont.innerHTML = `
+        <div class="row">
+          <div class="col-md-3">
+            <div class="card">
+              <div class="card-header">Użytkownicy</div>
+              <div class="chat-user-list">
+                ${users.map(u => `
+                  <div class="chat-user-item p-2 ${activeChatPartnerId === u.id ? 'active' : ''}" onclick="selectChatPartner('${u.id}')">
+                    ${u.firstName} ${u.lastName}
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+          <div class="col-md-9">
+            <div class="card">
+              <div class="card-header">Wiadomości ${activeChatPartnerId ? `(${db.users.find(u => u.id === activeChatPartnerId)?.firstName || 'Nieznany'})` : ''}</div>
+              <div class="chat-box">
+                ${msgs.map(m => `
+                  <div class="chat-msg ${m.senderId === currentUser.id ? 'mine' : ''}">
+                    <div class="chat-bubble">${m.text}</div>
+                  </div>
+                `).join('')}
+              </div>
+              ${activeChatPartnerId ? `
+                <div class="card-body pt-2">
+                  <div class="input-group">
+                    <input type="text" class="form-control" id="chatInput" placeholder="Wpisz wiadomość...">
+                    <button class="btn btn-primary" onclick="sendMessage()">Wyślij</button>
+                  </div>
+                </div>
+              ` : '<p class="card-body text-muted">Wybierz użytkownika</p>'}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function selectChatPartner(userId) {
+      activeChatPartnerId = userId;
+      showChat();
+    }
+
+    function sendMessage() {
+      const input = document.getElementById('chatInput');
+      if (input && input.value.trim() && activeChatPartnerId) {
+        db.messages.push({ id: uid(), senderId: currentUser.id, receiverId: activeChatPartnerId, text: input.value, sentAt: new Date().toISOString() });
+        saveDB(db);
+        input.value = '';
+        showChat();
+      }
+    }
+
+    function showAnnouncements() {
+      const cont = document.getElementById('content');
+      const ann = db.announcements || [];
+      cont.innerHTML = `
+        <div class="card">
+          <div class="card-header">
+            Ogłoszenia
+            ${currentUser.role === 'teacher' ? `<button class="btn btn-sm btn-primary float-end" onclick="createAnnouncement()">+ Dodaj ogłoszenie</button>` : ''}
+          </div>
+          <div class="card-body">
+            ${ann.map(a => `
+              <div class="card mb-3">
+                <div class="card-body">
+                  <h6>${a.title}</h6>
+                  <p>${a.text}</p>
+                  <small class="text-muted">${new Date(a.createdAt).toLocaleDateString('pl-PL')}</small>
+                </div>
+              </div>
+            `).join('') || '<p class="text-muted">Brak ogłoszeń</p>'}
+          </div>
+        </div>
+      `;
+    }
+
+    function createAnnouncement() {
+      if (currentUser.role !== 'teacher') return;
+      const title = prompt('Tytuł:');
+      const text = prompt('Treść:');
+      if (title && text) {
+        db.announcements.push({ id: uid(), title, text, createdBy: currentUser.id, createdAt: new Date().toISOString() });
+        saveDB(db);
+        showToast('Ogłoszenie dodane');
+        showAnnouncements();
+      }
+    }
+
+    function showManagement() {
+      if (currentUser.role !== 'teacher') return;
+      const cont = document.getElementById('content');
+      cont.innerHTML = `
+        <div class="row">
+          <div class="col-md-4">
+            <div class="card">
+              <div class="card-body">
+                <h6>Zarządzanie użytkownikami</h6>
+                <button class="btn btn-sm btn-primary w-100" onclick="manageUsers()">Edytuj</button>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="card">
+              <div class="card-body">
+                <h6>Godziny planu lekcji</h6>
+                <button class="btn btn-sm btn-primary w-100" onclick="openHourSlotsModal()">Edytuj</button>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="card">
+              <div class="card-body">
+                <h6>Kody weryfikacyjne</h6>
+                <button class="btn btn-sm btn-primary w-100" onclick="manageVerificationCodes()">Zarządzaj</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function manageUsers() {
+      showToast('Zarządzanie użytkownikami - funkcja w trakcie');
+    }
+
+    function openHourSlotsModal() {
+      const list = document.getElementById('hourSlotsEditorList');
+      list.innerHTML = db.hourSlots.map((slot, idx) => `
+        <div class="input-group mb-2">
+          <input type="text" class="form-control" id="slot${idx}" value="${slot}">
+          <button class="btn btn-outline-danger" onclick="removeHourSlot(${idx})">Usuń</button>
+        </div>
+      `).join('');
+      new bootstrap.Modal(document.getElementById('hourSlotsModal')).show();
+    }
+
+    function addHourSlotRow() {
+      const list = document.getElementById('hourSlotsEditorList');
+      const idx = db.hourSlots.length;
+      const div = document.createElement('div');
+      div.className = 'input-group mb-2';
+      div.innerHTML = `
+        <input type="text" class="form-control" id="slot${idx}" placeholder="np. 7. 14:00 - 14:45">
+        <button class="btn btn-outline-danger" onclick="removeHourSlot(${idx})">Usuń</button>
+      `;
+      list.appendChild(div);
+    }
+
+    function removeHourSlot(idx) {
+      document.getElementById(`slot${idx}`).parentElement.remove();
+    }
+
+    function saveHourSlotsFromModal() {
+      const slots = [];
+      document.querySelectorAll('#hourSlotsEditorList input').forEach(inp => {
+        if (inp.value.trim()) slots.push(inp.value.trim());
+      });
+      if (slots.length) {
+        db.hourSlots = slots;
+        saveDB(db);
+        bootstrap.Modal.getInstance(document.getElementById('hourSlotsModal')).hide();
+        showToast('Godziny zapisane');
+      }
+    }
+
+    function manageVerificationCodes() {
+      showToast('Zarządzanie kodami - funkcja w trakcie');
+    }
+
+    window.addEventListener('load', () => {
+      const session = loadSession();
+      if (session) {
+        currentUser = session;
+        showApp();
+      } else {
+        document.getElementById('auth').style.display = 'block';
+      }
+    });
+  </script>
+</body>
+</html>
