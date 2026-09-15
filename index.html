@@ -1,0 +1,2055 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dziennik Elektroniczny + Komunikator + Plan lekcji + Czasowy test</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <style>
+    :root { --primary: #1a56db; --primary-dark: #1e429f; }
+    body { background: #f3f4f6; font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+    .navbar { background: linear-gradient(135deg, #1a56db, #1e3a8a) !important; box-shadow: 0 2px 12px rgba(0,0,0,.15); }
+    .card { border: none; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+    .card-header { background: transparent; border-bottom: 1px solid #e5e7eb; font-weight: 600; }
+    .btn-primary { background: var(--primary); border-color: var(--primary); }
+    .btn-primary:hover { background: var(--primary-dark); border-color: var(--primary-dark); }
+    .grade-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: 36px; height: 36px; border-radius: 8px; font-weight: 700; font-size: 1rem;
+      background: #dbeafe; color: #1e40af;
+    }
+    .grade-badge.high { background: #d1fae5; color: #065f46; }
+    .grade-badge.mid { background: #fef3c7; color: #92400e; }
+    .grade-badge.low { background: #fee2e2; color: #991b1b; }
+    .stat-card { transition: transform .15s; }
+    .stat-card:hover { transform: translateY(-2px); }
+    .nav-pills .nav-link { border-radius: 8px; color: #4b5563; font-weight: 500; }
+    .nav-pills .nav-link.active { background: var(--primary); }
+    .table th { font-weight: 600; font-size: .85rem; text-transform: uppercase; letter-spacing: .03em; color: #6b7280; }
+    .login-box {
+      max-width: 420px; margin: 3rem auto;
+      background: white; border-radius: 16px; padding: 2.5rem;
+      box-shadow: 0 10px 40px rgba(0,0,0,.08);
+    }
+    .logo { font-size: 1.8rem; font-weight: 800; color: var(--primary); }
+    .role-badge { font-size: .7rem; padding: .25rem .6rem; border-radius: 20px; }
+    .empty-state { text-align: center; padding: 3rem 1rem; color: #9ca3af; }
+    .empty-state i { font-size: 3rem; margin-bottom: 1rem; opacity: .5; }
+    #app { display: none; }
+    #auth { display: none; }
+    .sidebar-nav .nav-link { padding: .65rem 1rem; margin-bottom: .25rem; }
+    .badge-obecny { background: #d1fae5; color: #065f46; }
+    .badge-nieobecny { background: #fee2e2; color: #991b1b; }
+    .badge-spozniony { background: #fef3c7; color: #92400e; }
+    .badge-usprawiedliwiony { background: #e0e7ff; color: #3730a3; }
+    .toast-container { z-index: 9999; }
+    .option-row { cursor: pointer; border: 2px solid #e5e7eb; border-radius: 10px; padding: .75rem 1rem; margin-bottom: .5rem; transition: .15s; }
+    .option-row:hover { border-color: #93c5fd; background: #f0f9ff; }
+    .option-row.selected { border-color: var(--primary); background: #dbeafe; }
+    .q-card { border-left: 4px solid var(--primary); }
+    .test-status-active { background: #d1fae5; color: #065f46; }
+    .test-status-draft { background: #f3f4f6; color: #6b7280; }
+    .chat-box { height: 380px; overflow-y: auto; padding: 1rem; background: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb; }
+    .chat-msg { margin-bottom: 0.75rem; max-width: 75%; }
+    .chat-msg.mine { margin-left: auto; text-align: right; }
+    .chat-bubble { display: inline-block; padding: 0.6rem 0.9rem; border-radius: 12px; font-size: 0.95rem; text-align: left; }
+    .chat-msg.mine .chat-bubble { background: var(--primary); color: white; border-bottom-right-radius: 2px; }
+    .chat-msg:not(.mine) .chat-bubble { background: #e5e7eb; color: #1f2937; border-bottom-left-radius: 2px; }
+    .chat-user-list { max-height: 420px; overflow-y: auto; }
+    .chat-user-item { cursor: pointer; transition: .15s; }
+    .chat-user-item:hover, .chat-user-item.active { background: #eff6ff; color: var(--primary); font-weight: 600; }
+    .timetable-cell { min-height: 70px; vertical-align: top; }
+  </style>
+</head>
+<body>
+  <div id="auth">
+    <div class="container">
+      <div class="login-box">
+        <div class="text-center mb-4">
+          <div class="logo"><i class="bi bi-journal-bookmark-fill"></i> Dziennik</div>
+          <p class="text-muted small mt-1">Elektroniczny dziennik szkolny + czasowe testy + plan</p>
+        </div>
+        <ul class="nav nav-pills nav-fill mb-4" id="authTabs">
+          <li class="nav-item"><button class="nav-link active" data-tab="login">Logowanie</button></li>
+          <li class="nav-item"><button class="nav-link" data-tab="register">Rejestracja ucznia</button></li>
+        </ul>
+        <div id="loginForm">
+          <div class="mb-3">
+            <label class="form-label">Login</label>
+            <input type="text" class="form-control" id="loginUsername" placeholder="Twój login" autocomplete="username">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Hasło</label>
+            <input type="password" class="form-control" id="loginPassword" placeholder="••••••••" autocomplete="current-password">
+          </div>
+          <div class="alert alert-danger d-none" id="loginError"></div>
+          <button class="btn btn-primary w-100 py-2 mb-2" onclick="doLogin()">
+            <i class="bi bi-box-arrow-in-right"></i> Zaloguj się
+          </button>
+          <div class="text-center">
+            <a href="#" class="small text-muted" onclick="showRecoveryModal(event)">Nie pamiętasz hasła? (Przypomnij słowem kluczowym)</a>
+          </div>
+        </div>
+        <div id="registerForm" class="d-none">
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label">Imię</label>
+              <input type="text" class="form-control" id="regFirstName">
+            </div>
+            <div class="col-6">
+              <label class="form-label">Nazwisko</label>
+              <input type="text" class="form-control" id="regLastName">
+            </div>
+          </div>
+          <div class="mb-3 mt-2">
+            <label class="form-label">Login</label>
+            <input type="text" class="form-control" id="regUsername" placeholder="min. 3 znaki">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Hasło</label>
+            <input type="password" class="form-control" id="regPassword" placeholder="min. 4 znaki">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Słowo powiązane (przypomnienie hasła)</label>
+            <input type="text" class="form-control" id="regSecretWord" placeholder="np. pies, szkoła">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Kod weryfikacyjny (opcjonalnie)</label>
+            <input type="text" class="form-control" id="regVerificationCode" placeholder="np. CODE-1234">
+          </div>
+          <div class="alert alert-danger d-none" id="regError"></div>
+          <div class="alert alert-success d-none" id="regSuccess"></div>
+          <button class="btn btn-primary w-100 py-2" onclick="doRegister()">
+            <i class="bi bi-person-plus"></i> Załóż konto ucznia
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="app">
+    <nav class="navbar navbar-dark sticky-top">
+      <div class="container-fluid">
+        <span class="navbar-brand mb-0 h1"><i class="bi bi-journal-bookmark-fill"></i> Dziennik Elektroniczny</span>
+        <div class="d-flex align-items-center gap-3 text-white">
+          <span id="userInfo" class="small"></span>
+          <button class="btn btn-outline-light btn-sm" onclick="doLogout()"><i class="bi bi-box-arrow-right"></i> Wyloguj</button>
+        </div>
+      </div>
+    </nav>
+    <div class="container-fluid py-4">
+      <div class="row">
+        <div class="col-lg-2 col-md-3 mb-3">
+          <div class="card">
+            <div class="card-body p-2">
+              <nav class="nav flex-column sidebar-nav" id="sideNav"></nav>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-10 col-md-9">
+          <div id="content"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal odzyskiwania hasła -->
+  <div class="modal fade" id="recoveryModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Przypomnienie hasła</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Login</label>
+            <input type="text" class="form-control" id="recUsername">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Słowo powiązane (zrejestrowane)</label>
+            <input type="text" class="form-control" id="recSecretWord">
+          </div>
+          <div class="alert alert-info d-none" id="recResult"></div>
+          <div class="alert alert-danger d-none" id="recError"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Zamknij</button>
+          <button type="button" class="btn btn-primary" onclick="doRecoverPassword()">Sprawdź</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal edycji godzin planu lekcji -->
+  <div class="modal fade" id="hourSlotsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Zarządzanie godzinami planu lekcji</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div id="hourSlotsEditorList" class="mb-3"></div>
+          <button class="btn btn-outline-primary btn-sm" onclick="addHourSlotRow()">+ Dodaj godzinę</button>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Anuluj</button>
+          <button type="button" class="btn btn-primary" onclick="saveHourSlotsFromModal()">Zapisz godziny</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <div id="toast" class="toast align-items-center text-bg-dark border-0" role="alert">
+      <div class="d-flex">
+        <div class="toast-body" id="toastBody"></div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    const STORAGE_KEY = 'dziennik_elektroniczny_v6';
+    const SESSION_KEY = 'dziennik_user';
+    let memoryStore = null;
+    let storageAvailable = false;
+    const DEFAULT_HOUR_SLOTS = ['1. 8:00 - 8:45', '2. 8:55 - 9:40', '3. 9:50 - 10:35', '4. 10:55 - 11:40', '5. 11:50 - 12:35', '6. 12:45 - 13:30'];
+
+    function canUseStorage(store) {
+      try {
+        const t = '__test__';
+        store.setItem(t, t);
+        store.removeItem(t);
+        return true;
+      } catch (e) { return false; }
+    }
+
+    try { storageAvailable = canUseStorage(window.localStorage); } catch (e) { storageAvailable = false; }
+
+    function emptyDB() {
+      return { users: [], classes: [], subjects: [], grades: [], attendance: [], remarks: [], tests: [], submissions: [], messages: [], class_chats: [], timetable: [], verificationCodes: [], hourSlots: [...DEFAULT_HOUR_SLOTS] };
+    }
+
+    function loadDB() {
+      if (storageAvailable) {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (raw) {
+            const d = JSON.parse(raw);
+            if (!d.tests) d.tests = [];
+            if (!d.submissions) d.submissions = [];
+            if (!d.messages) d.messages = [];
+            if (!d.class_chats) d.class_chats = [];
+            if (!d.timetable) d.timetable = [];
+            if (!d.verificationCodes) d.verificationCodes = [];
+            if (!d.hourSlots || !d.hourSlots.length) d.hourSlots = [...DEFAULT_HOUR_SLOTS];
+            return d;
+          }
+        } catch (e) {}
+      }
+      if (memoryStore) return memoryStore;
+      return emptyDB();
+    }
+
+    function saveDB(db) {
+      memoryStore = db;
+      if (storageAvailable) {
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); }
+        catch (e) { storageAvailable = false; }
+      }
+    }
+
+    let db = loadDB();
+    memoryStore = db;
+
+    if (!db.users.find(u => u.role === 'teacher')) {
+      db.users.push({
+        id: 'teacher-1',
+        username: 'nauczyciel',
+        password: 'domotokoks',
+        role: 'teacher',
+        firstName: 'Jan',
+        lastName: 'Kowalski',
+        createdAt: new Date().toISOString()
+      });
+      saveDB(db);
+    }
+
+    function saveSession(user) {
+      try {
+        if (canUseStorage(window.sessionStorage)) {
+          sessionStorage.setItem(SESSION_KEY, JSON.stringify(user));
+          return;
+        }
+      } catch (e) {}
+      window.__dziennikSession = user;
+    }
+    function loadSession() {
+      try {
+        if (canUseStorage(window.sessionStorage)) {
+          const s = sessionStorage.getItem(SESSION_KEY);
+          if (s) return JSON.parse(s);
+        }
+      } catch (e) {}
+      return window.__dziennikSession || null;
+    }
+    function clearSession() {
+      try {
+        if (canUseStorage(window.sessionStorage)) sessionStorage.removeItem(SESSION_KEY);
+      } catch (e) {}
+      window.__dziennikSession = null;
+    }
+
+    let currentUser = null;
+    let toastInstance = null;
+    let editingTestId = null;
+    let activeChatPartnerId = null;
+    let activeClassChatId = null;
+    let testTimerInterval = null;
+
+    function showToast(msg, isError = false) {
+      const el = document.getElementById('toast');
+      document.getElementById('toastBody').textContent = msg;
+      el.className = `toast align-items-center border-0 ${isError ? 'text-bg-danger' : 'text-bg-dark'}`;
+      if (!toastInstance) toastInstance = new bootstrap.Toast(el, { delay: 2800 });
+      toastInstance.show();
+    }
+
+    function uid() {
+      return 'id-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    }
+
+    function gradeClass(val) {
+      const n = parseFloat(String(val).replace(',', '.').replace('+', '.25').replace('-', '-.25'));
+      if (isNaN(n)) return '';
+      if (n >= 4.5) return 'high';
+      if (n >= 3) return 'mid';
+      return 'low';
+    }
+
+    function statusBadge(s) {
+      const map = { obecny: 'badge-obecny', nieobecny: 'badge-nieobecny', 'spóźniony': 'badge-spozniony', usprawiedliwiony: 'badge-usprawiedliwiony' };
+      return `<span class="badge ${map[s] || 'bg-secondary'}">${s}</span>`;
+    }
+
+    document.querySelectorAll('#authTabs .nav-link').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#authTabs .nav-link').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const tab = btn.dataset.tab;
+        document.getElementById('loginForm').classList.toggle('d-none', tab !== 'login');
+        document.getElementById('registerForm').classList.toggle('d-none', tab !== 'register');
+      });
+    });
+
+    function showRecoveryModal(e) {
+      if (e) e.preventDefault();
+      document.getElementById('recUsername').value = '';
+      document.getElementById('recSecretWord').value = '';
+      document.getElementById('recResult').classList.add('d-none');
+      document.getElementById('recError').classList.add('d-none');
+      new bootstrap.Modal(document.getElementById('recoveryModal')).show();
+    }
+
+    function doRecoverPassword() {
+      const username = document.getElementById('recUsername').value.trim();
+      const secret = document.getElementById('recSecretWord').value.trim().toLowerCase();
+      const res = document.getElementById('recResult');
+      const err = document.getElementById('recError');
+      res.classList.add('d-none');
+      err.classList.add('d-none');
+      const user = db.users.find(u => u.username.toLowerCase() === username.toLowerCase());
+      if (!user || (user.secretWord || '').toLowerCase() !== secret) {
+        err.textContent = 'Niepoprawny login lub słowo powiązane';
+        err.classList.remove('d-none');
+        return;
+      }
+      res.textContent = `Twoje hasło to: ${user.password}`;
+      res.classList.remove('d-none');
+    }
+
+    function doLogin() {
+      const username = document.getElementById('loginUsername').value.trim();
+      const password = document.getElementById('loginPassword').value;
+      const err = document.getElementById('loginError');
+      err.classList.add('d-none');
+      const user = db.users.find(u => u.username.toLowerCase() === username.toLowerCase() && u.password === password);
+      if (!user) {
+        err.textContent = 'Nieprawidłowy login lub hasło';
+        err.classList.remove('d-none');
+        return;
+      }
+      currentUser = { id: user.id, username: user.username, firstName: user.firstName, lastName: user.lastName, role: user.role, classId: user.classId };
+      saveSession(currentUser);
+      showApp();
+    }
+
+    function doRegister() {
+      const firstName = document.getElementById('regFirstName').value.trim();
+      const lastName = document.getElementById('regLastName').value.trim();
+      const username = document.getElementById('regUsername').value.trim();
+      const password = document.getElementById('regPassword').value;
+      const secretWord = document.getElementById('regSecretWord').value.trim();
+      const verCode = document.getElementById('regVerificationCode').value.trim();
+      const err = document.getElementById('regError');
+      const ok = document.getElementById('regSuccess');
+      err.classList.add('d-none');
+      ok.classList.add('d-none');
+      if (!firstName || !lastName || !username || !password || !secretWord) {
+        err.textContent = 'Wszystkie główne pola są wymagane';
+        err.classList.remove('d-none');
+        return;
+      }
+      if (username.length < 3) { err.textContent = 'Login min. 3 znaki'; err.classList.remove('d-none'); return; }
+      if (password.length < 4) { err.textContent = 'Hasło min. 4 znaki'; err.classList.remove('d-none'); return; }
+      if (db.users.find(u => u.username.toLowerCase() === username.toLowerCase())) {
+        err.textContent = 'Taki login już istnieje';
+        err.classList.remove('d-none');
+        return;
+      }
+      let assignedClassId = null;
+      if (verCode) {
+        const foundCode = (db.verificationCodes || []).find(c => c.code.toLowerCase() === verCode.toLowerCase() && !c.used);
+        if (!foundCode) {
+          err.textContent = 'Nieprawidłowy lub wykorzystany kod weryfikacyjny';
+          err.classList.remove('d-none');
+          return;
+        }
+        assignedClassId = foundCode.classId || null;
+        foundCode.used = true;
+      }
+      db.users.push({
+        id: uid(), username, password, secretWord, role: 'student',
+        firstName, lastName, classId: assignedClassId, createdAt: new Date().toISOString()
+      });
+      saveDB(db);
+      ok.textContent = 'Konto utworzone! Możesz się zalogować.';
+      ok.classList.remove('d-none');
+      document.getElementById('regFirstName').value = '';
+      document.getElementById('regLastName').value = '';
+      document.getElementById('regUsername').value = '';
+      document.getElementById('regPassword').value = '';
+      document.getElementById('regSecretWord').value = '';
+      document.getElementById('regVerificationCode').value = '';
+    }
+
+    function doLogout() {
+      if (testTimerInterval) clearInterval(testTimerInterval);
+      currentUser = null;
+      clearSession();
+      document.getElementById('app').style.display = 'none';
+      document.getElementById('auth').style.display = 'block';
+    }
+
+    function checkAuth() {
+      try {
+        const saved = loadSession();
+        if (saved) {
+          currentUser = saved;
+          const u = db.users.find(x => x.id === currentUser.id);
+          if (u) {
+            currentUser.firstName = u.firstName;
+            currentUser.lastName = u.lastName;
+            currentUser.username = u.username;
+            currentUser.classId = u.classId;
+          }
+          showApp();
+          return;
+        }
+      } catch (e) {}
+      document.getElementById('auth').style.display = 'block';
+    }
+
+    function showApp() {
+      document.getElementById('auth').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+      document.getElementById('userInfo').innerHTML = `
+        <span class="role-badge ${currentUser.role === 'teacher' ? 'bg-warning text-dark' : 'bg-info'}">${currentUser.role === 'teacher' ? 'Nauczyciel' : 'Uczeń'}</span>
+        ${currentUser.firstName} ${currentUser.lastName}
+      `;
+      buildNav();
+      if (currentUser.role === 'teacher') loadTeacherDashboard();
+      else loadStudentDashboard();
+    }
+
+    function buildNav() {
+      const nav = document.getElementById('sideNav');
+      if (currentUser.role === 'teacher') {
+        nav.innerHTML = `
+          <a class="nav-link active" href="#" data-view="dash"><i class="bi bi-speedometer2"></i> Panel</a>
+          <a class="nav-link" href="#" data-view="classes"><i class="bi bi-people"></i> Klasy</a>
+          <a class="nav-link" href="#" data-view="students"><i class="bi bi-person-badge"></i> Uczniowie</a>
+          <a class="nav-link" href="#" data-view="codes"><i class="bi bi-key"></i> Kody weryfikacyjne</a>
+          <a class="nav-link" href="#" data-view="subjects"><i class="bi bi-book"></i> Przedmioty</a>
+          <a class="nav-link" href="#" data-view="grades"><i class="bi bi-star"></i> Oceny</a>
+          <a class="nav-link" href="#" data-view="attendance"><i class="bi bi-calendar-check"></i> Frekwencja</a>
+          <a class="nav-link" href="#" data-view="remarks"><i class="bi bi-chat-left-text"></i> Uwagi</a>
+          <a class="nav-link" href="#" data-view="tests"><i class="bi bi-ui-checks"></i> Testy (czasowe)</a>
+          <a class="nav-link" href="#" data-view="timetable"><i class="bi bi-calendar-week"></i> Plan lekcji</a>
+          <a class="nav-link" href="#" data-view="chat_dm"><i class="bi bi-chat-dots"></i> Czat z uczniami</a>
+          <a class="nav-link" href="#" data-view="chat_class"><i class="bi bi-people-fill"></i> Grupa klasowa</a>
+          <a class="nav-link" href="#" data-view="profile"><i class="bi bi-person-gear"></i> Edycja profilu</a>
+        `;
+      } else {
+        nav.innerHTML = `
+          <a class="nav-link active" href="#" data-view="dash"><i class="bi bi-speedometer2"></i> Moje dane</a>
+          <a class="nav-link" href="#" data-view="grades"><i class="bi bi-star"></i> Oceny</a>
+          <a class="nav-link" href="#" data-view="attendance"><i class="bi bi-calendar-check"></i> Frekwencja</a>
+          <a class="nav-link" href="#" data-view="remarks"><i class="bi bi-chat-left-text"></i> Uwagi</a>
+          <a class="nav-link" href="#" data-view="tests"><i class="bi bi-ui-checks"></i> Testy</a>
+          <a class="nav-link" href="#" data-view="timetable"><i class="bi bi-calendar-week"></i> Plan lekcji</a>
+          <a class="nav-link" href="#" data-view="chat_dm"><i class="bi bi-chat-dots"></i> Wiadomości (Nauczyciel)</a>
+          <a class="nav-link" href="#" data-view="chat_class"><i class="bi bi-people-fill"></i> Grupa klasowa</a>
+          <a class="nav-link" href="#" data-view="profile"><i class="bi bi-person-gear"></i> Zmień dane logowania</a>
+        `;
+      }
+      nav.querySelectorAll('.nav-link').forEach(a => {
+        a.addEventListener('click', (e) => {
+          e.preventDefault();
+          nav.querySelectorAll('.nav-link').forEach(n => n.classList.remove('active'));
+          a.classList.add('active');
+          const v = a.dataset.view;
+          if (currentUser.role === 'teacher') {
+            if (v === 'dash') loadTeacherDashboard();
+            else if (v === 'classes') loadClasses();
+            else if (v === 'students') loadStudents();
+            else if (v === 'codes') loadVerificationCodesTeacher();
+            else if (v === 'subjects') loadSubjects();
+            else if (v === 'grades') loadGradesTeacher();
+            else if (v === 'attendance') loadAttendanceTeacher();
+            else if (v === 'remarks') loadRemarksTeacher();
+            else if (v === 'tests') loadTestsTeacher();
+            else if (v === 'timetable') loadTimetableTeacher();
+            else if (v === 'chat_dm') loadTeacherDM();
+            else if (v === 'chat_class') loadClassChatTeacher();
+            else if (v === 'profile') loadProfileTeacher();
+          } else {
+            if (v === 'dash') loadStudentDashboard();
+            else if (v === 'grades') loadMyGrades();
+            else if (v === 'attendance') loadMyAttendance();
+            else if (v === 'remarks') loadMyRemarks();
+            else if (v === 'tests') loadTestsStudent();
+            else if (v === 'timetable') loadTimetableStudent();
+            else if (v === 'chat_dm') loadStudentDM();
+            else if (v === 'chat_class') loadClassChatStudent();
+            else if (v === 'profile') loadProfileStudent();
+          }
+        });
+      });
+    }
+
+    // ===== KODY WERYFIKACYJNE (TEACHER) =====
+    function loadVerificationCodesTeacher() {
+      const codes = db.verificationCodes || [];
+      document.getElementById('content').innerHTML = `
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <h4 class="mb-0">Kody weryfikacyjne dla uczniów</h4>
+          <button class="btn btn-primary btn-sm" onclick="document.getElementById('addCodeForm').classList.toggle('d-none')"><i class="bi bi-plus-lg"></i> Generuj kod</button>
+        </div>
+        <div id="addCodeForm" class="card mb-3 d-none">
+          <div class="card-body">
+            <div class="row g-2 align-items-center">
+              <div class="col-md-4">
+                <input type="text" class="form-control" id="newVerificationCodeVal" placeholder="Wpisz lub zostaw losowy (np. CODE-999)">
+              </div>
+              <div class="col-md-4">
+                <select class="form-select" id="newCodeClass">
+                  <option value="">Wstępnie przypisz klasę (opcjonalnie)</option>
+                  ${db.classes.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}
+                </select>
+              </div>
+              <div class="col-md-4">
+                <button class="btn btn-primary w-100" onclick="generateVerificationCode()">Utwórz kod</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card"><div class="card-body p-0">
+          <table class="table table-hover mb-0">
+            <thead><tr><th>Kod</th><th>Docelowa klasa</th><th>Status</th><th>Data utworzenia</th><th></th></tr></thead>
+            <tbody>
+              ${codes.map(c => {
+                const cls = db.classes.find(cl => cl.id === c.classId);
+                return `<tr>
+                  <td class="fw-bold font-monospace">${c.code}</td>
+                  <td>${cls ? cls.name : '—'}</td>
+                  <td><span class="badge ${c.used ? 'bg-secondary' : 'bg-success'}">${c.used ? 'Wykorzystany' : 'Aktywny'}</span></td>
+                  <td class="text-muted small">${new Date(c.createdAt).toLocaleDateString('pl')}</td>
+                  <td class="text-end"><button class="btn btn-outline-danger btn-sm" onclick="deleteVerificationCode('${c.id}')"><i class="bi bi-trash"></i></button></td>
+                </tr>`;
+              }).join('') || '<tr><td colspan="5" class="text-center text-muted py-4">Brak wygenerowanych kodów</td></tr>'}
+            </tbody>
+          </table>
+        </div></div>
+      `;
+    }
+
+    function generateVerificationCode() {
+      let code = document.getElementById('newVerificationCodeVal').value.trim();
+      const classId = document.getElementById('newCodeClass').value;
+      if (!code) code = 'CODE-' + Math.random().toString(36).substring(2, 7).toUpperCase();
+      if (!db.verificationCodes) db.verificationCodes = [];
+      db.verificationCodes.push({
+        id: uid(),
+        code,
+        classId: classId || null,
+        used: false,
+        createdAt: new Date().toISOString()
+      });
+      saveDB(db);
+      showToast('Wygenerowano kod weryfikacyjny: ' + code);
+      loadVerificationCodesTeacher();
+    }
+
+    function deleteVerificationCode(id) {
+      if (!confirm('Usunąć kod weryfikacyjny?')) return;
+      db.verificationCodes = (db.verificationCodes || []).filter(c => c.id !== id);
+      saveDB(db);
+      showToast('Usunięto kod');
+      loadVerificationCodesTeacher();
+    }
+
+    // ===== PLAN LEKCJI (TIMETABLE) =====
+    const DAYS_OF_WEEK = ['Poniedziałek', 'Wtorek', 'Środa', 'Czwartek', 'Piątek'];
+    let selectedTimetableClass = null;
+
+    function getHourSlots() {
+      return (db.hourSlots && db.hourSlots.length) ? db.hourSlots : [...DEFAULT_HOUR_SLOTS];
+    }
+
+    function loadTimetableTeacher() {
+      if (!selectedTimetableClass && db.classes.length > 0) selectedTimetableClass = db.classes[0].id;
+      document.getElementById('content').innerHTML = `
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <h4 class="mb-0">Plan lekcji</h4>
+          <button class="btn btn-outline-primary btn-sm" onclick="openHourSlotsEditorModal()"><i class="bi bi-clock"></i> Edytuj godziny lekcyjne</button>
+        </div>
+        <div class="row mb-3">
+          <div class="col-md-4">
+            <select class="form-select" onchange="selectedTimetableClass=this.value; loadTimetableTeacher();">
+              ${db.classes.map(c => `<option value="${c.id}" ${selectedTimetableClass===c.id?'selected':''}>Klasa ${c.name}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div id="timetableEditorView"></div>
+      `;
+      renderTimetableGrid(true);
+    }
+
+    function loadTimetableStudent() {
+      selectedTimetableClass = currentUser.classId;
+      document.getElementById('content').innerHTML = `
+        <h4 class="mb-4">Plan lekcji${selectedTimetableClass ? ' (Twoja klasa)' : ''}</h4>
+        <div id="timetableEditorView"></div>
+      `;
+      renderTimetableGrid(false);
+    }
+
+    function renderTimetableGrid(isTeacher) {
+      const container = document.getElementById('timetableEditorView');
+      if (!container) return;
+      if (currentUser.role === 'student' && !currentUser.classId) {
+        container.innerHTML = `<div class="alert alert-warning">Nie masz przypisanej klasy przez nauczyciela.</div>`;
+        return;
+      }
+      const targetClassId = currentUser.role === 'teacher' ? selectedTimetableClass : currentUser.classId;
+      const tEntries = (db.timetable || []).filter(t => t.classId === targetClassId);
+      const hoursSlots = getHourSlots();
+
+      container.innerHTML = `
+        <div class="card"><div class="card-body p-0 table-responsive">
+          <table class="table table-bordered mb-0 text-center">
+            <thead>
+              <tr>
+                <th style="width:140px;">Godzina</th>
+                ${DAYS_OF_WEEK.map(d => `<th>${d}</th>`).join('')}
+              </tr>
+            </thead>
+            <tbody>
+              ${hoursSlots.map((slot, hIndex) => `
+                <tr>
+                  <td class="fw-semibold bg-light small">${slot}</td>
+                  ${DAYS_OF_WEEK.map((day, dIndex) => {
+                    const entry = tEntries.find(e => e.day === day && e.hourIndex === hIndex);
+                    return `
+                      <td class="timetable-cell">
+                        ${entry ? `
+                          <div class="fw-semibold text-primary">${entry.subject}</div>
+                          <div class="text-muted small">${entry.teacher || ''}</div>
+                          ${isTeacher ? `
+                            <button class="btn btn-sm btn-outline-danger mt-1 py-0 px-1" onclick="deleteTimetableEntry('${entry.id}')"><i class="bi bi-x"></i></button>
+                          ` : ''}
+                        ` : (isTeacher ? `
+                          <button class="btn btn-sm btn-outline-secondary mt-2" onclick="addTimetablePrompt('${day}', ${hIndex}, '${targetClassId}')">+ Dodaj</button>
+                        ` : '<span class="text-muted">—</span>')}
+                      </td>
+                    `;
+                  }).join('')}
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div></div>
+      `;
+    }
+
+    function openHourSlotsEditorModal() {
+      const listEl = document.getElementById('hourSlotsEditorList');
+      const slots = getHourSlots();
+      listEl.innerHTML = slots.map((s, idx) => `
+        <div class="input-group mb-2 slot-row-item">
+          <span class="input-group-text">${idx + 1}.</span>
+          <input type="text" class="form-control slot-input-val" value="${s.replace(/^\d+\.\s*/, '')}">
+          <button class="btn btn-outline-danger" onclick="removeHourSlotRow(this)"><i class="bi bi-trash"></i></button>
+        </div>
+      `).join('');
+      new bootstrap.Modal(document.getElementById('hourSlotsModal')).show();
+    }
+
+    function addHourSlotRow() {
+      const listEl = document.getElementById('hourSlotsEditorList');
+      const count = listEl.querySelectorAll('.slot-row-item').length + 1;
+      const div = document.createElement('div');
+      div.className = 'input-group mb-2 slot-row-item';
+      div.innerHTML = `
+        <span class="input-group-text">${count}.</span>
+        <input type="text" class="form-control slot-input-val" value="nowa godzina">
+        <button class="btn btn-outline-danger" onclick="removeHourSlotRow(this)"><i class="bi bi-trash"></i></button>
+      `;
+      listEl.appendChild(div);
+    }
+
+    function removeHourSlotRow(btn) {
+      btn.closest('.slot-row-item').remove();
+    }
+
+    function saveHourSlotsFromModal() {
+      const inputs = document.querySelectorAll('#hourSlotsEditorList .slot-input-val');
+      const newSlots = [];
+      inputs.forEach((inp, idx) => {
+        newSlots.push(`${idx + 1}. ${inp.value.trim()}`);
+      });
+      db.hourSlots = newSlots.length ? newSlots : [...DEFAULT_HOUR_SLOTS];
+      saveDB(db);
+      bootstrap.Modal.getInstance(document.getElementById('hourSlotsModal')).hide();
+      showToast('Zapisano nowe godziny planu lekcji');
+      loadTimetableTeacher();
+    }
+
+    function addTimetablePrompt(day, hourIndex, classId) {
+      const hoursSlots = getHourSlots();
+      const subject = prompt(`Podaj przedmiot na ${day} (${hoursSlots[hourIndex] || ''}):`);
+      if (!subject || !subject.trim()) return;
+      const teacher = prompt('Imię i nazwisko nauczyciela (opcjonalnie):', '');
+      if (!db.timetable) db.timetable = [];
+      db.timetable.push({
+        id: uid(),
+        classId,
+        day,
+        hourIndex,
+        subject: subject.trim(),
+        teacher: (teacher || '').trim()
+      });
+      saveDB(db);
+      showToast('Lekcja dodana do planu');
+      loadTimetableTeacher();
+    }
+
+    function deleteTimetableEntry(id) {
+      if (!confirm('Usunąć tę lekcję z planu?')) return;
+      db.timetable = (db.timetable || []).filter(t => t.id !== id);
+      saveDB(db);
+      showToast('Usunięto lekcję');
+      currentUser.role === 'teacher' ? loadTimetableTeacher() : loadTimetableStudent();
+    }
+
+    // ===== PROFIL / EDYCJA DANYCH =====
+    function loadProfileTeacher() {
+      const u = db.users.find(x => x.id === currentUser.id);
+      document.getElementById('content').innerHTML = `
+        <h4 class="mb-4">Edycja profilu nauczyciela</h4>
+        <div class="card max-w-lg">
+          <div class="card-body">
+            <div class="mb-3">
+              <label class="form-label">Imię</label>
+              <input type="text" class="form-control" id="profTeacherFirstName" value="${u.firstName}">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Nazwisko</label>
+              <input type="text" class="form-control" id="profTeacherLastName" value="${u.lastName}">
+            </div>
+            <hr class="my-4">
+            <div class="mb-3">
+              <label class="form-label">Nowy login</label>
+              <input type="text" class="form-control" id="profTeacherUsername" value="${u.username}">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Nowe hasło (zostaw puste, aby nie zmieniać)</label>
+              <input type="password" class="form-control" id="profTeacherPassword" placeholder="••••••••">
+            </div>
+            <button class="btn btn-primary" onclick="saveTeacherProfile()">Zapisz zmiany</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function saveTeacherProfile() {
+      const firstName = document.getElementById('profTeacherFirstName').value.trim();
+      const lastName = document.getElementById('profTeacherLastName').value.trim();
+      const username = document.getElementById('profTeacherUsername').value.trim();
+      const password = document.getElementById('profTeacherPassword').value;
+      if (!firstName || !lastName || !username) return showToast('Wypełnij wymagane pola', true);
+      const u = db.users.find(x => x.id === currentUser.id);
+      if (u) {
+        u.firstName = firstName;
+        u.lastName = lastName;
+        u.username = username;
+        if (password) u.password = password;
+        currentUser.firstName = firstName;
+        currentUser.lastName = lastName;
+        currentUser.username = username;
+        saveDB(db);
+        showApp();
+        showToast('Zapisano zmiany w profilu');
+      }
+    }
+
+    function loadProfileStudent() {
+      const u = db.users.find(x => x.id === currentUser.id);
+      document.getElementById('content').innerHTML = `
+        <h4 class="mb-4">Zmień login i hasło</h4>
+        <div class="card max-w-lg">
+          <div class="card-body">
+            <div class="mb-3">
+              <label class="form-label">Nowy login</label>
+              <input type="text" class="form-control" id="profStudentUsername" value="${u.username}">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Nowe hasło (zostaw puste, aby nie zmieniać)</label>
+              <input type="password" class="form-control" id="profStudentPassword" placeholder="••••••••">
+            </div>
+            <button class="btn btn-primary" onclick="saveStudentProfile()">Zapisz zmiany</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function saveStudentProfile() {
+      const username = document.getElementById('profStudentUsername').value.trim();
+      const password = document.getElementById('profStudentPassword').value;
+      if (!username) return showToast('Login nie może być pusty', true);
+      const u = db.users.find(x => x.id === currentUser.id);
+      if (u) {
+        u.username = username;
+        if (password) u.password = password;
+        currentUser.username = username;
+        saveDB(db);
+        showApp();
+        showToast('Zaktualizowano dane logowania');
+      }
+    }
+
+    // ===== KOMUNIKATOR 1:1 (DM) =====
+    function loadTeacherDM() {
+      const students = db.users.filter(u => u.role === 'student');
+      if (!activeChatPartnerId && students.length > 0) activeChatPartnerId = students[0].id;
+      document.getElementById('content').innerHTML = `
+        <h4 class="mb-4">Komunikator z uczniami (1:1)</h4>
+        <div class="row">
+          <div class="col-md-4 mb-3">
+            <div class="card h-100">
+              <div class="card-header">Wybierz ucznia</div>
+              <div class="list-group list-group-flush chat-user-list">
+                ${students.map(s => `
+                  <div class="list-group-item chat-user-item ${activeChatPartnerId === s.id ? 'active' : ''}" onclick="selectChatPartner('${s.id}')">
+                    ${s.lastName} ${s.firstName}
+                    <div class="small text-muted">${s.username}</div>
+                  </div>
+                `).join('') || '<div class="p-3 text-muted">Brak uczniów</div>'}
+              </div>
+            </div>
+          </div>
+          <div class="col-md-8 mb-3">
+            <div class="card h-100">
+              <div class="card-header" id="chatPartnerHeader">Rozmowa</div>
+              <div class="card-body d-flex flex-column">
+                <div class="chat-box mb-3 flex-grow-1" id="dmChatBox"></div>
+                <div class="input-group">
+                  <input type="text" class="form-control" id="dmInput" placeholder="Napisz wiadomość..." onkeypress="checkDmSend(event)">
+                  <button class="btn btn-primary" onclick="sendDmMessage()"><i class="bi bi-send-fill"></i></button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      renderDmMessages();
+    }
+
+    function selectChatPartner(id) {
+      activeChatPartnerId = id;
+      loadTeacherDM();
+    }
+
+    function renderDmMessages() {
+      const box = document.getElementById('dmChatBox');
+      const header = document.getElementById('chatPartnerHeader');
+      if (!box) return;
+      const partner = db.users.find(u => u.id === activeChatPartnerId);
+      if (header && partner) header.textContent = `Rozmowa z: ${partner.firstName} ${partner.lastName}`;
+      if (!partner) {
+        box.innerHTML = '<div class="text-muted text-center mt-5">Wybierz ucznia z listy</div>';
+        return;
+      }
+      const msgs = (db.messages || []).filter(m => 
+        (m.fromId === currentUser.id && m.toId === partner.id) ||
+        (m.fromId === partner.id && m.toId === currentUser.id)
+      ).sort((a,b) => new Date(a.date) - new Date(b.date));
+
+      box.innerHTML = msgs.map(m => {
+        const mine = m.fromId === currentUser.id;
+        return `
+          <div class="chat-msg ${mine ? 'mine' : ''}">
+            <div class="chat-bubble">
+              ${m.text}
+              <div class="text-muted" style="font-size: .65rem; text-align: right; margin-top:2px;">${new Date(m.date).toLocaleTimeString('pl', {hour:'2-digit', minute:'2-digit'})}</div>
+            </div>
+          </div>
+        `;
+      }).join('') || '<div class="text-center text-muted my-5">Brak wiadomości. Napisz pierwszą wiadomość!</div>';
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function checkDmSend(e) {
+      if (e.key === 'Enter') sendDmMessage();
+    }
+
+    function sendDmMessage() {
+      const input = document.getElementById('dmInput');
+      if (!input || !activeChatPartnerId) return;
+      const text = input.value.trim();
+      if (!text) return;
+      if (!db.messages) db.messages = [];
+      db.messages.push({
+        id: uid(),
+        fromId: currentUser.id,
+        toId: activeChatPartnerId,
+        text,
+        date: new Date().toISOString()
+      });
+      saveDB(db);
+      input.value = '';
+      renderDmMessages();
+    }
+
+    function loadStudentDM() {
+      activeChatPartnerId = 'teacher-1';
+      const teacher = db.users.find(u => u.id === 'teacher-1') || { firstName: 'Jan', lastName: 'Kowalski' };
+      document.getElementById('content').innerHTML = `
+        <h4 class="mb-4">Wiadomości z nauczycielem</h4>
+        <div class="card">
+          <div class="card-header">Nauczyciel: ${teacher.firstName} ${teacher.lastName}</div>
+          <div class="card-body d-flex flex-column">
+            <div class="chat-box mb-3" style="height: 420px;" id="dmChatBoxStudent"></div>
+            <div class="input-group">
+              <input type="text" class="form-control" id="dmInputStudent" placeholder="Napisz wiadomość do nauczyciela..." onkeypress="checkDmSendStudent(event)">
+              <button class="btn btn-primary" onclick="sendDmMessageStudent()"><i class="bi bi-send-fill"></i></button>
+            </div>
+          </div>
+        </div>
+      `;
+      renderDmMessagesStudent();
+    }
+
+    function renderDmMessagesStudent() {
+      const box = document.getElementById('dmChatBoxStudent');
+      if (!box) return;
+      const partnerId = 'teacher-1';
+      const msgs = (db.messages || []).filter(m => 
+        (m.fromId === currentUser.id && m.toId === partnerId) ||
+        (m.fromId === partnerId && m.toId === currentUser.id)
+      ).sort((a,b) => new Date(a.date) - new Date(b.date));
+
+      box.innerHTML = msgs.map(m => {
+        const mine = m.fromId === currentUser.id;
+        return `
+          <div class="chat-msg ${mine ? 'mine' : ''}">
+            <div class="chat-bubble">
+              ${m.text}
+              <div class="text-muted" style="font-size: .65rem; text-align: right; margin-top:2px;">${new Date(m.date).toLocaleTimeString('pl', {hour:'2-digit', minute:'2-digit'})}</div>
+            </div>
+          </div>
+        `;
+      }).join('') || '<div class="text-center text-muted my-5">Brak wiadomości z nauczycielem.</div>';
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function checkDmSendStudent(e) {
+      if (e.key === 'Enter') sendDmMessageStudent();
+    }
+
+    function sendDmMessageStudent() {
+      const input = document.getElementById('dmInputStudent');
+      if (!input) return;
+      const text = input.value.trim();
+      if (!text) return;
+      if (!db.messages) db.messages = [];
+      db.messages.push({
+        id: uid(),
+        fromId: currentUser.id,
+        toId: 'teacher-1',
+        text,
+        date: new Date().toISOString()
+      });
+      saveDB(db);
+      input.value = '';
+      renderDmMessagesStudent();
+    }
+
+    // ===== GRUPA KLASOWA =====
+    function loadClassChatTeacher() {
+      if (!activeClassChatId && db.classes.length > 0) activeClassChatId = db.classes[0].id;
+      document.getElementById('content').innerHTML = `
+        <h4 class="mb-4">Grupa klasowa (Czat zbiorowy)</h4>
+        <div class="row">
+          <div class="col-md-4 mb-3">
+            <div class="card h-100">
+              <div class="card-header">Wybierz klasę</div>
+              <div class="list-group list-group-flush chat-user-list">
+                ${db.classes.map(c => `
+                  <div class="list-group-item chat-user-item ${activeClassChatId === c.id ? 'active' : ''}" onclick="selectClassChat('${c.id}')">
+                    Klasa ${c.name}
+                  </div>
+                `).join('') || '<div class="p-3 text-muted">Brak klas</div>'}
+              </div>
+            </div>
+          </div>
+          <div class="col-md-8 mb-3">
+            <div class="card h-100">
+              <div class="card-header" id="classChatHeader">Czat klasowy</div>
+              <div class="card-body d-flex flex-column">
+                <div class="chat-box mb-3 flex-grow-1" id="classChatBox"></div>
+                <div class="input-group">
+                  <input type="text" class="form-control" id="classChatInput" placeholder="Napisz do całej klasy..." onkeypress="checkClassChatSend(event)">
+                  <button class="btn btn-primary" onclick="sendClassChatMessage()"><i class="bi bi-send-fill"></i></button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      renderClassChatMessages();
+    }
+
+    function selectClassChat(id) {
+      activeClassChatId = id;
+      loadClassChatTeacher();
+    }
+
+    function renderClassChatMessages() {
+      const box = document.getElementById('classChatBox');
+      const header = document.getElementById('classChatHeader');
+      if (!box) return;
+      const cls = db.classes.find(c => c.id === activeClassChatId);
+      if (header && cls) header.textContent = `Czat klasowy: ${cls.name}`;
+      if (!cls) {
+        box.innerHTML = '<div class="text-muted text-center mt-5">Wybierz klasę z listy</div>';
+        return;
+      }
+      const msgs = (db.class_chats || []).filter(m => m.classId === activeClassChatId)
+        .sort((a,b) => new Date(a.date) - new Date(b.date));
+
+      box.innerHTML = msgs.map(m => {
+        const mine = m.senderId === currentUser.id;
+        const sender = db.users.find(u => u.id === m.senderId);
+        const nameStr = sender ? `${sender.lastName} ${sender.firstName} (${sender.role === 'teacher' ? 'Nauczyciel' : 'Uczeń'})` : 'Nieznany';
+        return `
+          <div class="chat-msg ${mine ? 'mine' : ''}">
+            <div class="small text-muted mb-1" style="font-size:.7rem; ${mine ? 'text-align:right' : ''}">${nameStr}</div>
+            <div class="chat-bubble">
+              ${m.text}
+              <div class="text-muted" style="font-size: .65rem; text-align: right; margin-top:2px;">${new Date(m.date).toLocaleTimeString('pl', {hour:'2-digit', minute:'2-digit'})}</div>
+            </div>
+          </div>
+        `;
+      }).join('') || '<div class="text-center text-muted my-5">Brak wiadomości w grupie klasowej.</div>';
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function checkClassChatSend(e) {
+      if (e.key === 'Enter') sendClassChatMessage();
+    }
+
+    function sendClassChatMessage() {
+      const input = document.getElementById('classChatInput');
+      if (!input || !activeClassChatId) return;
+      const text = input.value.trim();
+      if (!text) return;
+      if (!db.class_chats) db.class_chats = [];
+      db.class_chats.push({
+        id: uid(),
+        classId: activeClassChatId,
+        senderId: currentUser.id,
+        text,
+        date: new Date().toISOString()
+      });
+      saveDB(db);
+      input.value = '';
+      renderClassChatMessages();
+    }
+
+    function loadClassChatStudent() {
+      const myClassId = currentUser.classId;
+      if (!myClassId) {
+        document.getElementById('content').innerHTML = `
+          <h4 class="mb-4">Grupa klasowa</h4>
+          <div class="alert alert-warning">Nie jesteś przypisany do żadnej klasy przez nauczyciela.</div>
+        `;
+        return;
+      }
+      activeClassChatId = myClassId;
+      const cls = db.classes.find(c => c.id === myClassId);
+      document.getElementById('content').innerHTML = `
+        <h4 class="mb-4">Grupa klasowa: ${cls ? cls.name : ''}</h4>
+        <div class="card">
+          <div class="card-header">Czat grupowy klasy</div>
+          <div class="card-body d-flex flex-column">
+            <div class="chat-box mb-3" style="height: 420px;" id="classChatBoxStudent"></div>
+            <div class="input-group">
+              <input type="text" class="form-control" id="classChatInputStudent" placeholder="Napisz do grupy klasowej..." onkeypress="checkClassChatSendStudent(event)">
+              <button class="btn btn-primary" onclick="sendClassChatMessageStudent()"><i class="bi bi-send-fill"></i></button>
+            </div>
+          </div>
+        </div>
+      `;
+      renderClassChatMessagesStudent();
+    }
+
+    function renderClassChatMessagesStudent() {
+      const box = document.getElementById('classChatBoxStudent');
+      if (!box || !activeClassChatId) return;
+      const msgs = (db.class_chats || []).filter(m => m.classId === activeClassChatId)
+        .sort((a,b) => new Date(a.date) - new Date(b.date));
+
+      box.innerHTML = msgs.map(m => {
+        const mine = m.senderId === currentUser.id;
+        const sender = db.users.find(u => u.id === m.senderId);
+        const nameStr = sender ? `${sender.lastName} ${sender.firstName} (${sender.role === 'teacher' ? 'Nauczyciel' : 'Uczeń'})` : 'Nieznany';
+        return `
+          <div class="chat-msg ${mine ? 'mine' : ''}">
+            <div class="small text-muted mb-1" style="font-size:.7rem; ${mine ? 'text-align:right' : ''}">${nameStr}</div>
+            <div class="chat-bubble">
+              ${m.text}
+              <div class="text-muted" style="font-size: .65rem; text-align: right; margin-top:2px;">${new Date(m.date).toLocaleTimeString('pl', {hour:'2-digit', minute:'2-digit'})}</div>
+            </div>
+          </div>
+        `;
+      }).join('') || '<div class="text-center text-muted my-5">Brak wiadomości w grupie klasowej.</div>';
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function checkClassChatSendStudent(e) {
+      if (e.key === 'Enter') sendClassChatMessageStudent();
+    }
+
+    function sendClassChatMessageStudent() {
+      const input = document.getElementById('classChatInputStudent');
+      if (!input || !activeClassChatId) return;
+      const text = input.value.trim();
+      if (!text) return;
+      if (!db.class_chats) db.class_chats = [];
+      db.class_chats.push({
+        id: uid(),
+        classId: activeClassChatId,
+        senderId: currentUser.id,
+        text,
+        date: new Date().toISOString()
+      });
+      saveDB(db);
+      input.value = '';
+      renderClassChatMessagesStudent();
+    }
+
+    // ===== TEACHER: DASHBOARD & CORE =====
+    function loadTeacherDashboard() {
+      const students = db.users.filter(u => u.role === 'student');
+      const grades = db.grades;
+      const activeTests = (db.tests || []).filter(t => t.active).length;
+      document.getElementById('content').innerHTML = `
+        <h4 class="mb-4">Panel nauczyciela</h4>
+        <div class="row g-3 mb-4">
+          <div class="col-md-3"><div class="card stat-card"><div class="card-body text-center">
+            <div class="fs-2 fw-bold text-primary">${db.classes.length}</div><div class="text-muted small">Klas</div>
+          </div></div></div>
+          <div class="col-md-3"><div class="card stat-card"><div class="card-body text-center">
+            <div class="fs-2 fw-bold text-success">${students.length}</div><div class="text-muted small">Uczniów</div>
+          </div></div></div>
+          <div class="col-md-3"><div class="card stat-card"><div class="card-body text-center">
+            <div class="fs-2 fw-bold text-warning">${grades.length}</div><div class="text-muted small">Ocen</div>
+          </div></div></div>
+          <div class="col-md-3"><div class="card stat-card"><div class="card-body text-center">
+            <div class="fs-2 fw-bold text-info">${activeTests}</div><div class="text-muted small">Aktywnych testów</div>
+          </div></div></div>
+        </div>
+        <div class="card"><div class="card-header">Ostatnie oceny</div>
+          <div class="card-body p-0"><div class="table-responsive">
+            <table class="table table-hover mb-0">
+              <thead><tr><th>Data</th><th>Uczeń</th><th>Przedmiot</th><th>Ocena</th><th>Opis</th></tr></thead>
+              <tbody>
+                ${grades.slice(-8).reverse().map(g => {
+                  const st = db.users.find(u => u.id === g.studentId);
+                  const sub = db.subjects.find(s => s.id === g.subjectId);
+                  return `<tr>
+                    <td>${g.date}</td>
+                    <td>${st ? st.lastName + ' ' + st.firstName : '—'}</td>
+                    <td>${sub ? sub.name : '—'}</td>
+                    <td><span class="grade-badge ${gradeClass(g.value)}">${g.value}</span></td>
+                    <td class="text-muted small">${g.description || '—'}</td>
+                  </tr>`;
+                }).join('') || '<tr><td colspan="5" class="text-center text-muted">Brak ocen</td></tr>'}
+              </tbody>
+            </table>
+          </div></div>
+        </div>
+      `;
+    }
+
+    function loadClasses() {
+      document.getElementById('content').innerHTML = `
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <h4 class="mb-0">Klasy</h4>
+          <button class="btn btn-primary btn-sm" onclick="document.getElementById('addClassForm').classList.toggle('d-none')"><i class="bi bi-plus-lg"></i> Dodaj klasę</button>
+        </div>
+        <div class="card"><div class="card-body p-0">
+          <table class="table table-hover mb-0">
+            <thead><tr><th>Nazwa</th><th>Utworzono</th><th></th></tr></thead>
+            <tbody>
+              ${db.classes.map(c => `
+                <tr>
+                  <td class="fw-semibold">${c.name}</td>
+                  <td class="text-muted small">${new Date(c.createdAt).toLocaleDateString('pl')}</td>
+                  <td class="text-end"><button class="btn btn-outline-danger btn-sm" onclick="deleteClass('${c.id}')"><i class="bi bi-trash"></i></button></td>
+                </tr>
+              `).join('') || '<tr><td colspan="3" class="text-center text-muted py-4">Brak klas — dodaj pierwszą</td></tr>'}
+            </tbody>
+          </table>
+        </div></div>
+        <div id="addClassForm" class="card mt-3 d-none">
+          <div class="card-body">
+            <h6>Nowa klasa</h6>
+            <div class="input-group">
+              <input type="text" class="form-control" id="newClassName" placeholder="np. 1A, 2B...">
+              <button class="btn btn-primary" onclick="addClass()">Zapisz</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+    function addClass() {
+      const name = document.getElementById('newClassName').value.trim();
+      if (!name) return showToast('Podaj nazwę klasy', true);
+      db.classes.push({ id: uid(), name, createdAt: new Date().toISOString() });
+      saveDB(db); showToast('Klasa dodana'); loadClasses();
+    }
+    function deleteClass(id) {
+      if (!confirm('Usunąć klasę?')) return;
+      db.classes = db.classes.filter(c => c.id !== id);
+      db.users.forEach(u => { if (u.classId === id) u.classId = null; });
+      db.subjects = db.subjects.filter(s => s.classId !== id);
+      saveDB(db); showToast('Usunięto'); loadClasses();
+    }
+
+    function loadStudents() {
+      const students = db.users.filter(u => u.role === 'student');
+      document.getElementById('content').innerHTML = `
+        <h4 class="mb-4">Uczniowie</h4>
+        <div class="card"><div class="card-body p-0">
+          <table class="table table-hover mb-0">
+            <thead><tr><th>Imię i nazwisko</th><th>Login</th><th>Klasa</th></tr></thead>
+            <tbody>
+              ${students.map(s => `
+                <tr>
+                  <td class="fw-semibold">${s.lastName} ${s.firstName}</td>
+                  <td class="text-muted">${s.username}</td>
+                  <td>
+                    <select class="form-select form-select-sm" style="width:auto;display:inline-block" onchange="assignClass('${s.id}', this.value)">
+                      <option value="">— bez klasy —</option>
+                      ${db.classes.map(c => `<option value="${c.id}" ${s.classId === c.id ? 'selected' : ''}>${c.name}</option>`).join('')}
+                    </select>
+                  </td>
+                </tr>
+              `).join('') || '<tr><td colspan="3" class="text-center text-muted py-4">Brak zarejestrowanych uczniów</td></tr>'}
+            </tbody>
+          </table>
+        </div></div>
+        <p class="text-muted small mt-2"><i class="bi bi-info-circle"></i> Uczniowie rejestrują się sami. Ty przypisujesz ich do klas lub przez kody weryfikacyjne.</p>
+      `;
+    }
+    function assignClass(studentId, classId) {
+      const u = db.users.find(x => x.id === studentId);
+      if (u) { u.classId = classId || null; saveDB(db); showToast('Zaktualizowano'); }
+    }
+
+    function loadSubjects() {
+      document.getElementById('content').innerHTML = `
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <h4 class="mb-0">Przedmioty</h4>
+          <button class="btn btn-primary btn-sm" onclick="document.getElementById('addSubjectForm').classList.toggle('d-none')"><i class="bi bi-plus-lg"></i> Dodaj przedmiot</button>
+        </div>
+        <div id="addSubjectForm" class="card mb-3 d-none">
+          <div class="card-body">
+            <div class="row g-2">
+              <div class="col-md-5"><input type="text" class="form-control" id="newSubjectName" placeholder="Nazwa przedmiotu"></div>
+              <div class="col-md-4">
+                <select class="form-select" id="newSubjectClass">
+                  <option value="">Wybierz klasę</option>
+                  ${db.classes.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}
+                </select>
+              </div>
+              <div class="col-md-3"><button class="btn btn-primary w-100" onclick="addSubject()">Zapisz</button></div>
+            </div>
+          </div>
+        </div>
+        <div class="card"><div class="card-body p-0">
+          <table class="table table-hover mb-0">
+            <thead><tr><th>Przedmiot</th><th>Klasa</th><th></th></tr></thead>
+            <tbody>
+              ${db.subjects.map(s => {
+                const cls = db.classes.find(c => c.id === s.classId);
+                return `<tr>
+                  <td class="fw-semibold">${s.name}</td>
+                  <td>${cls ? cls.name : '—'}</td>
+                  <td class="text-end"><button class="btn btn-outline-danger btn-sm" onclick="deleteSubject('${s.id}')"><i class="bi bi-trash"></i></button></td>
+                </tr>`;
+              }).join('') || '<tr><td colspan="3" class="text-center text-muted py-4">Brak przedmiotów</td></tr>'}
+            </tbody>
+          </table>
+        </div></div>
+      `;
+    }
+    function addSubject() {
+      const name = document.getElementById('newSubjectName').value.trim();
+      const classId = document.getElementById('newSubjectClass').value;
+      if (!name || !classId) return showToast('Wypełnij wszystkie pola', true);
+      db.subjects.push({ id: uid(), name, classId, createdAt: new Date().toISOString() });
+      saveDB(db); showToast('Przedmiot dodany'); loadSubjects();
+    }
+    function deleteSubject(id) {
+      if (!confirm('Usunąć przedmiot wraz z ocenami?')) return;
+      db.subjects = db.subjects.filter(s => s.id !== id);
+      db.grades = db.grades.filter(g => g.subjectId !== id);
+      saveDB(db); showToast('Usunięto'); loadSubjects();
+    }
+
+    function loadGradesTeacher() {
+      const students = db.users.filter(u => u.role === 'student');
+      document.getElementById('content').innerHTML = `
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <h4 class="mb-0">Oceny</h4>
+          <button class="btn btn-primary btn-sm" onclick="document.getElementById('addGradeForm').classList.toggle('d-none')"><i class="bi bi-plus-lg"></i> Wystaw ocenę</button>
+        </div>
+        <div id="addGradeForm" class="card mb-3 d-none">
+          <div class="card-body">
+            <div class="row g-2">
+              <div class="col-md-3">
+                <select class="form-select" id="gradeStudent">
+                  <option value="">Uczeń</option>
+                  ${students.map(s => `<option value="${s.id}">${s.lastName} ${s.firstName}</option>`).join('')}
+                </select>
+              </div>
+              <div class="col-md-3">
+                <select class="form-select" id="gradeSubject">
+                  <option value="">Przedmiot</option>
+                  ${db.subjects.map(s => {
+                    const cls = db.classes.find(c => c.id === s.classId);
+                    return `<option value="${s.id}">${s.name} (${cls ? cls.name : ''})</option>`;
+                  }).join('')}
+                </select>
+              </div>
+              <div class="col-md-2"><input type="text" class="form-control" id="gradeValue" placeholder="Ocena (5, 4+)"></div>
+              <div class="col-md-1"><input type="number" class="form-control" id="gradeWeight" value="1" min="1" max="5" title="Waga"></div>
+              <div class="col-md-2"><input type="text" class="form-control" id="gradeDesc" placeholder="Opis"></div>
+              <div class="col-md-1"><button class="btn btn-primary w-100" onclick="addGrade()">+</button></div>
+            </div>
+          </div>
+        </div>
+        <div class="card"><div class="card-body p-0">
+          <table class="table table-hover mb-0">
+            <thead><tr><th>Data</th><th>Uczeń</th><th>Przedmiot</th><th>Ocena</th><th>Waga</th><th>Opis</th><th></th></tr></thead>
+            <tbody>
+              ${db.grades.slice().reverse().map(g => {
+                const st = db.users.find(u => u.id === g.studentId);
+                const sub = db.subjects.find(s => s.id === g.subjectId);
+                return `<tr>
+                  <td>${g.date}</td>
+                  <td>${st ? st.lastName + ' ' + st.firstName : '—'}</td>
+                  <td>${sub ? sub.name : '—'}</td>
+                  <td><span class="grade-badge ${gradeClass(g.value)}">${g.value}</span></td>
+                  <td>${g.weight || 1}</td>
+                  <td class="text-muted small">${g.description || '—'}</td>
+                  <td class="text-end"><button class="btn btn-outline-danger btn-sm" onclick="deleteGrade('${g.id}')"><i class="bi bi-trash"></i></button></td>
+                </tr>`;
+              }).join('') || '<tr><td colspan="7" class="text-center text-muted py-4">Brak ocen</td></tr>'}
+            </tbody>
+          </table>
+        </div></div>
+      `;
+    }
+    function addGrade() {
+      const studentId = document.getElementById('gradeStudent').value;
+      const subjectId = document.getElementById('gradeSubject').value;
+      const value = document.getElementById('gradeValue').value.trim();
+      const weight = document.getElementById('gradeWeight').value;
+      const description = document.getElementById('gradeDesc').value.trim();
+      if (!studentId || !subjectId || !value) return showToast('Wypełnij wymagane pola', true);
+      db.grades.push({
+        id: uid(), studentId, subjectId, value, weight: Number(weight) || 1,
+        description, date: new Date().toISOString().slice(0, 10), createdAt: new Date().toISOString()
+      });
+      saveDB(db); showToast('Ocena wystawiona'); loadGradesTeacher();
+    }
+    function deleteGrade(id) {
+      if (!confirm('Usunąć ocenę?')) return;
+      db.grades = db.grades.filter(g => g.id !== id);
+      saveDB(db); showToast('Usunięto'); loadGradesTeacher();
+    }
+
+    function loadAttendanceTeacher() {
+      const students = db.users.filter(u => u.role === 'student');
+      document.getElementById('content').innerHTML = `
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <h4 class="mb-0">Frekwencja</h4>
+          <button class="btn btn-primary btn-sm" onclick="document.getElementById('addAttForm').classList.toggle('d-none')"><i class="bi bi-plus-lg"></i> Dodaj wpis</button>
+        </div>
+        <div id="addAttForm" class="card mb-3 d-none">
+          <div class="card-body">
+            <div class="row g-2">
+              <div class="col-md-3">
+                <select class="form-select" id="attStudent">
+                  <option value="">Uczeń</option>
+                  ${students.map(s => `<option value="${s.id}">${s.lastName} ${s.firstName}</option>`).join('')}
+                </select>
+              </div>
+              <div class="col-md-2"><input type="date" class="form-control" id="attDate" value="${new Date().toISOString().slice(0,10)}"></div>
+              <div class="col-md-2">
+                <select class="form-select" id="attStatus">
+                  <option value="obecny">obecny</option>
+                  <option value="nieobecny">nieobecny</option>
+                  <option value="spóźniony">spóźniony</option>
+                  <option value="usprawiedliwiony">usprawiedliwiony</option>
+                </select>
+              </div>
+              <div class="col-md-2"><input type="text" class="form-control" id="attLesson" placeholder="Lekcja"></div>
+              <div class="col-md-2"><input type="text" class="form-control" id="attNote" placeholder="Notatka"></div>
+              <div class="col-md-1"><button class="btn btn-primary w-100" onclick="addAttendance()">+</button></div>
+            </div>
+          </div>
+        </div>
+        <div class="card"><div class="card-body p-0">
+          <table class="table table-hover mb-0">
+            <thead><tr><th>Data</th><th>Uczeń</th><th>Status</th><th>Lekcja</th><th>Notatka</th><th></th></tr></thead>
+            <tbody>
+              ${db.attendance.slice().reverse().map(a => {
+                const st = db.users.find(u => u.id === a.studentId);
+                return `<tr>
+                  <td>${a.date}</td>
+                  <td>${st ? st.lastName + ' ' + st.firstName : '—'}</td>
+                  <td>${statusBadge(a.status)}</td>
+                  <td>${a.lesson || '—'}</td>
+                  <td class="text-muted small">${a.note || '—'}</td>
+                  <td class="text-end"><button class="btn btn-outline-danger btn-sm" onclick="deleteAtt('${a.id}')"><i class="bi bi-trash"></i></button></td>
+                </tr>`;
+              }).join('') || '<tr><td colspan="6" class="text-center text-muted py-4">Brak wpisów</td></tr>'}
+            </tbody>
+          </table>
+        </div></div>
+      `;
+    }
+    function addAttendance() {
+      const studentId = document.getElementById('attStudent').value;
+      const date = document.getElementById('attDate').value;
+      const status = document.getElementById('attStatus').value;
+      const lesson = document.getElementById('attLesson').value.trim();
+      const note = document.getElementById('attNote').value.trim();
+      if (!studentId || !date) return showToast('Wybierz ucznia i datę', true);
+      db.attendance = db.attendance.filter(a => !(a.studentId === studentId && a.date === date && a.lesson === lesson));
+      db.attendance.push({ id: uid(), studentId, date, status, lesson, note, createdAt: new Date().toISOString() });
+      saveDB(db); showToast('Zapisano'); loadAttendanceTeacher();
+    }
+    function deleteAtt(id) {
+      if (!confirm('Usunąć?')) return;
+      db.attendance = db.attendance.filter(a => a.id !== id);
+      saveDB(db); showToast('Usunięto'); loadAttendanceTeacher();
+    }
+
+    function loadRemarksTeacher() {
+      const students = db.users.filter(u => u.role === 'student');
+      document.getElementById('content').innerHTML = `
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <h4 class="mb-0">Uwagi i pochwały</h4>
+          <button class="btn btn-primary btn-sm" onclick="document.getElementById('addRemarkForm').classList.toggle('d-none')"><i class="bi bi-plus-lg"></i> Dodaj</button>
+        </div>
+        <div id="addRemarkForm" class="card mb-3 d-none">
+          <div class="card-body">
+            <div class="row g-2">
+              <div class="col-md-3">
+                <select class="form-select" id="remarkStudent">
+                  <option value="">Uczeń</option>
+                  ${students.map(s => `<option value="${s.id}">${s.lastName} ${s.firstName}</option>`).join('')}
+                </select>
+              </div>
+              <div class="col-md-2">
+                <select class="form-select" id="remarkType">
+                  <option value="uwaga">Uwaga</option>
+                  <option value="pochwała">Pochwała</option>
+                </select>
+              </div>
+              <div class="col-md-5"><input type="text" class="form-control" id="remarkContent" placeholder="Treść"></div>
+              <div class="col-md-2"><button class="btn btn-primary w-100" onclick="addRemark()">Zapisz</button></div>
+            </div>
+          </div>
+        </div>
+        <div class="card"><div class="card-body p-0">
+          <table class="table table-hover mb-0">
+            <thead><tr><th>Data</th><th>Uczeń</th><th>Typ</th><th>Treść</th><th></th></tr></thead>
+            <tbody>
+              ${db.remarks.slice().reverse().map(r => {
+                const st = db.users.find(u => u.id === r.studentId);
+                return `<tr>
+                  <td>${r.date}</td>
+                  <td>${st ? st.lastName + ' ' + st.firstName : '—'}</td>
+                  <td><span class="badge ${r.type === 'pochwała' ? 'bg-success' : 'bg-warning text-dark'}">${r.type}</span></td>
+                  <td>${r.content}</td>
+                  <td class="text-end"><button class="btn btn-outline-danger btn-sm" onclick="deleteRemark('${r.id}')"><i class="bi bi-trash"></i></button></td>
+                </tr>`;
+              }).join('') || '<tr><td colspan="5" class="text-center text-muted py-4">Brak uwag</td></tr>'}
+            </tbody>
+          </table>
+        </div></div>
+      `;
+    }
+    function addRemark() {
+      const studentId = document.getElementById('remarkStudent').value;
+      const type = document.getElementById('remarkType').value;
+      const content = document.getElementById('remarkContent').value.trim();
+      if (!studentId || !content) return showToast('Wypełnij pola', true);
+      db.remarks.push({
+        id: uid(), studentId, type, content,
+        date: new Date().toISOString().slice(0, 10), createdAt: new Date().toISOString()
+      });
+      saveDB(db); showToast('Dodano'); loadRemarksTeacher();
+    }
+    function deleteRemark(id) {
+      if (!confirm('Usunąć?')) return;
+      db.remarks = db.remarks.filter(r => r.id !== id);
+      saveDB(db); showToast('Usunięto'); loadRemarksTeacher();
+    }
+
+    // ===== TESTS – TEACHER (Z CZASEM) =====
+    function loadTestsTeacher() {
+      editingTestId = null;
+      const tests = db.tests || [];
+      document.getElementById('content').innerHTML = `
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <h4 class="mb-0">Testy (z limitem czasu)</h4>
+          <button class="btn btn-primary btn-sm" onclick="showCreateTest()"><i class="bi bi-plus-lg"></i> Nowy test</button>
+        </div>
+        <div class="card"><div class="card-body p-0">
+          <table class="table table-hover mb-0">
+            <thead><tr><th>Tytuł</th><th>Czas (min)</th><th>Pytań</th><th>Status</th><th>Wyniki</th><th></th></tr></thead>
+            <tbody>
+              ${tests.map(t => {
+                const subs = (db.submissions || []).filter(s => s.testId === t.id);
+                return `<tr>
+                  <td class="fw-semibold">${t.title}</td>
+                  <td>${t.timeLimitMinutes || 10} min</td>
+                  <td>${(t.questions || []).length}</td>
+                  <td><span class="badge ${t.active ? 'test-status-active' : 'test-status-draft'}">${t.active ? 'Aktywny' : 'Szkic'}</span></td>
+                  <td>${subs.length} odpowiedzi</td>
+                  <td class="text-end text-nowrap">
+                    <button class="btn btn-outline-primary btn-sm me-1" onclick="viewTestResults('${t.id}')" title="Wyniki"><i class="bi bi-bar-chart"></i></button>
+                    <button class="btn btn-outline-secondary btn-sm me-1" onclick="editTest('${t.id}')" title="Edytuj"><i class="bi bi-pencil"></i></button>
+                    <button class="btn btn-outline-${t.active ? 'warning' : 'success'} btn-sm me-1" onclick="toggleTestActive('${t.id}')">${t.active ? 'Dezaktywuj' : 'Aktywuj'}</button>
+                    <button class="btn btn-outline-danger btn-sm" onclick="deleteTest('${t.id}')"><i class="bi bi-trash"></i></button>
+                  </td>
+                </tr>`;
+              }).join('') || '<tr><td colspan="6" class="text-center text-muted py-4">Brak testów — utwórz pierwszy</td></tr>'}
+            </tbody>
+          </table>
+        </div></div>
+      `;
+    }
+
+    function showCreateTest() {
+      editingTestId = null;
+      renderTestEditor({ title: '', timeLimitMinutes: 10, questions: [] });
+    }
+
+    function editTest(id) {
+      const t = (db.tests || []).find(x => x.id === id);
+      if (!t) return;
+      editingTestId = id;
+      renderTestEditor(JSON.parse(JSON.stringify(t)));
+    }
+
+    function renderTestEditor(test) {
+      if (!test.questions) test.questions = [];
+      window._editTest = test;
+      document.getElementById('content').innerHTML = `
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h4 class="mb-0">${editingTestId ? 'Edycja testu' : 'Nowy test'}</h4>
+          <button class="btn btn-outline-secondary btn-sm" onclick="loadTestsTeacher()">← Wróć</button>
+        </div>
+        <div class="card mb-3">
+          <div class="card-body">
+            <div class="row g-3">
+              <div class="col-md-8">
+                <label class="form-label fw-semibold">Tytuł testu</label>
+                <input type="text" class="form-control" id="testTitle" value="${(test.title || '').replace(/"/g, '&quot;')}" placeholder="np. Sprawdzian z matematyki – ułamki">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-semibold">Czas na rozwiązanie (minuty)</label>
+                <input type="number" class="form-control" id="testTimeLimit" value="${test.timeLimitMinutes || 10}" min="1" max="180">
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="questionsList"></div>
+        <div class="d-flex gap-2 mt-3">
+          <button class="btn btn-outline-primary" onclick="addQuestionToEditor()"><i class="bi bi-plus"></i> Dodaj pytanie</button>
+          <button class="btn btn-primary ms-auto" onclick="saveTest()"><i class="bi bi-check-lg"></i> Zapisz test</button>
+        </div>
+      `;
+      renderQuestionsList();
+    }
+
+    function renderQuestionsList() {
+      const list = document.getElementById('questionsList');
+      if (!list) return;
+      const qs = window._editTest.questions || [];
+      if (qs.length === 0) {
+        list.innerHTML = `<div class="empty-state"><i class="bi bi-question-circle"></i><p>Dodaj pierwsze pytanie</p></div>`;
+        return;
+      }
+      list.innerHTML = qs.map((q, qi) => `
+        <div class="card q-card mb-3">
+          <div class="card-body">
+            <div class="d-flex justify-content-between mb-2">
+              <span class="badge bg-primary">Pytanie ${qi + 1}</span>
+              <button class="btn btn-sm btn-outline-danger" onclick="removeQuestion(${qi})"><i class="bi bi-trash"></i></button>
+            </div>
+            <input type="text" class="form-control mb-3" value="${(q.text || '').replace(/"/g, '&quot;')}"
+              onchange="window._editTest.questions[${qi}].text = this.value" placeholder="Treść pytania">
+            <div class="small text-muted mb-2">Odpowiedzi (zaznacz poprawną):</div>
+            ${(q.options || ['', '', '', '']).map((opt, oi) => `
+              <div class="input-group mb-2">
+                <span class="input-group-text">
+                  <input type="radio" name="correct_${qi}" ${q.correct === oi ? 'checked' : ''}
+                    onchange="window._editTest.questions[${qi}].correct = ${oi}">
+                </span>
+                <input type="text" class="form-control ${q.correct === oi ? 'border-success' : ''}"
+                  value="${(opt || '').replace(/"/g, '&quot;')}"
+                  onchange="window._editTest.questions[${qi}].options[${oi}] = this.value"
+                  placeholder="Odpowiedź ${String.fromCharCode(65 + oi)}">
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function addQuestionToEditor() {
+      if (!window._editTest.questions) window._editTest.questions = [];
+      window._editTest.questions.push({
+        id: uid(),
+        text: '',
+        options: ['', '', '', ''],
+        correct: 0
+      });
+      renderQuestionsList();
+    }
+
+    function removeQuestion(idx) {
+      window._editTest.questions.splice(idx, 1);
+      renderQuestionsList();
+    }
+
+    function saveTest() {
+      const title = document.getElementById('testTitle').value.trim();
+      const timeLimitMinutes = Number(document.getElementById('testTimeLimit').value) || 10;
+      if (!title) return showToast('Podaj tytuł testu', true);
+      const qs = window._editTest.questions || [];
+      if (qs.length === 0) return showToast('Dodaj przynajmniej jedno pytanie', true);
+      for (let i = 0; i < qs.length; i++) {
+        if (!qs[i].text.trim()) return showToast(`Pytanie ${i + 1}: uzupełnij treść`, true);
+        if ((qs[i].options || []).filter(o => o && o.trim()).length < 2) {
+          return showToast(`Pytanie ${i + 1}: podaj min. 2 odpowiedzi`, true);
+        }
+        if (qs[i].correct === undefined || qs[i].correct === null) {
+          return showToast(`Pytanie ${i + 1}: zaznacz poprawną odpowiedź`, true);
+        }
+      }
+      if (editingTestId) {
+        const idx = db.tests.findIndex(t => t.id === editingTestId);
+        if (idx >= 0) {
+          db.tests[idx].title = title;
+          db.tests[idx].timeLimitMinutes = timeLimitMinutes;
+          db.tests[idx].questions = qs;
+        }
+      } else {
+        if (!db.tests) db.tests = [];
+        db.tests.push({
+          id: uid(),
+          title,
+          timeLimitMinutes,
+          questions: qs,
+          active: false,
+          createdAt: new Date().toISOString()
+        });
+      }
+      saveDB(db);
+      showToast('Test zapisany');
+      loadTestsTeacher();
+    }
+
+    function toggleTestActive(id) {
+      const t = db.tests.find(x => x.id === id);
+      if (!t) return;
+      t.active = !t.active;
+      saveDB(db);
+      showToast(t.active ? 'Test aktywowany — uczniowie mogą go rozwiązywać' : 'Test dezaktywowany');
+      loadTestsTeacher();
+    }
+
+    function deleteTest(id) {
+      if (!confirm('Usunąć test wraz z wynikami uczniów?')) return;
+      db.tests = db.tests.filter(t => t.id !== id);
+      db.submissions = (db.submissions || []).filter(s => s.testId !== id);
+      saveDB(db);
+      showToast('Usunięto');
+      loadTestsTeacher();
+    }
+
+    function viewTestResults(testId) {
+      const t = db.tests.find(x => x.id === testId);
+      if (!t) return;
+      const subs = (db.submissions || []).filter(s => s.testId === testId);
+      document.getElementById('content').innerHTML = `
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <h4 class="mb-0">Wyniki: ${t.title}</h4>
+          <button class="btn btn-outline-secondary btn-sm" onclick="loadTestsTeacher()">← Wróć</button>
+        </div>
+        <div class="card"><div class="card-body p-0">
+          <table class="table table-hover mb-0">
+            <thead><tr><th>Uczeń</th><th>Wynik</th><th>%</th><th>Data</th></tr></thead>
+            <tbody>
+              ${subs.length ? subs.map(s => {
+                const st = db.users.find(u => u.id === s.studentId);
+                const pct = t.questions.length ? Math.round((s.score / t.questions.length) * 100) : 0;
+                return `<tr>
+                  <td>${st ? st.lastName + ' ' + st.firstName : '—'}</td>
+                  <td><strong>${s.score}</strong> / ${t.questions.length}</td>
+                  <td><span class="badge ${pct >= 50 ? 'bg-success' : 'bg-danger'}">${pct}%</span></td>
+                  <td class="text-muted small">${new Date(s.submittedAt).toLocaleString('pl')}</td>
+                </tr>`;
+              }).join('') : '<tr><td colspan="4" class="text-center text-muted py-4">Nikt jeszcze nie rozwiązał tego testu</td></tr>'}
+            </tbody>
+          </table>
+        </div></div>
+      `;
+    }
+
+    // ===== TESTS – STUDENT (CZASOWE) =====
+    function loadTestsStudent() {
+      if (testTimerInterval) clearInterval(testTimerInterval);
+      const tests = (db.tests || []).filter(t => t.active);
+      const mySubs = (db.submissions || []).filter(s => s.studentId === currentUser.id);
+      document.getElementById('content').innerHTML = `
+        <h4 class="mb-4">Dostępne testy</h4>
+        ${tests.length === 0 ? `<div class="empty-state"><i class="bi bi-ui-checks"></i><p>Brak aktywnych testów</p></div>` : ''}
+        <div class="row g-3">
+          ${tests.map(t => {
+            const sub = mySubs.find(s => s.testId === t.id);
+            const pct = sub && t.questions.length ? Math.round((sub.score / t.questions.length) * 100) : null;
+            return `
+              <div class="col-md-6">
+                <div class="card h-100">
+                  <div class="card-body">
+                    <h5 class="card-title">${t.title}</h5>
+                    <p class="text-muted small mb-3">${t.questions.length} pytań | Czas: <strong>${t.timeLimitMinutes || 10} min</strong></p>
+                    ${sub ? `
+                      <div class="alert alert-info mb-2 py-2">
+                        Twój wynik: <strong>${sub.score}/${t.questions.length}</strong> (${pct}%)
+                      </div>
+                      <button class="btn btn-outline-secondary btn-sm" disabled>Już rozwiązany</button>
+                    ` : `
+                      <button class="btn btn-primary" onclick="startTest('${t.id}')">
+                        <i class="bi bi-play-fill"></i> Rozpocznij test
+                      </button>
+                    `}
+                  </div>
+                </div>
+              </div>`;
+          }).join('')}
+        </div>
+      `;
+    }
+
+    function startTest(testId) {
+      const t = db.tests.find(x => x.id === testId);
+      if (!t || !t.active) return showToast('Test niedostępny', true);
+      if ((db.submissions || []).find(s => s.testId === testId && s.studentId === currentUser.id)) {
+        return showToast('Już rozwiązałeś ten test', true);
+      }
+      const limitMinutes = t.timeLimitMinutes || 10;
+      window._takingTest = {
+        testId,
+        answers: {},
+        endTime: Date.now() + limitMinutes * 60 * 1000
+      };
+      renderTakeTest(t);
+      if (testTimerInterval) clearInterval(testTimerInterval);
+      testTimerInterval = setInterval(() => {
+        const remainingMs = window._takingTest.endTime - Date.now();
+        const timerEl = document.getElementById('testCountdown');
+        if (remainingMs <= 0) {
+          clearInterval(testTimerInterval);
+          if (timerEl) timerEl.textContent = '00:00';
+          showToast('Czas minął! Automatyczne wysyłanie...', true);
+          submitTestFormInternal();
+        } else {
+          const totalSec = Math.floor(remainingMs / 1000);
+          const mins = Math.floor(totalSec / 60);
+          const secs = totalSec % 60;
+          if (timerEl) {
+            timerEl.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+          }
+        }
+      }, 500);
+    }
+
+    function renderTakeTest(t) {
+      const limitMinutes = t.timeLimitMinutes || 10;
+      document.getElementById('content').innerHTML = `
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <div>
+            <h4 class="mb-0">${t.title}</h4>
+            <span class="text-danger small fw-semibold">Pozostały czas: <span id="testCountdown">${limitMinutes}:00</span></span>
+          </div>
+          <button class="btn btn-outline-secondary btn-sm" onclick="cancelTestAttempt()">Anuluj</button>
+        </div>
+        <form id="testForm" onsubmit="submitTest(event)">
+          ${t.questions.map((q, qi) => `
+            <div class="card mb-3">
+              <div class="card-body">
+                <div class="fw-semibold mb-3">${qi + 1}. ${q.text}</div>
+                ${(q.options || []).map((opt, oi) => opt ? `
+                  <label class="option-row d-block" id="opt_${qi}_${oi}">
+                    <input type="radio" name="q_${qi}" value="${oi}" class="form-check-input me-2"
+                      onchange="selectOption(${qi}, ${oi})">
+                    ${String.fromCharCode(65 + oi)}. ${opt}
+                  </label>
+                ` : '').join('')}
+              </div>
+            </div>
+          `).join('')}
+          <button type="submit" class="btn btn-primary btn-lg w-100">
+            <i class="bi bi-send"></i> Wyślij odpowiedzi
+          </button>
+        </form>
+      `;
+    }
+
+    function cancelTestAttempt() {
+      if (testTimerInterval) clearInterval(testTimerInterval);
+      loadTestsStudent();
+    }
+
+    function selectOption(qi, oi) {
+      window._takingTest.answers[qi] = oi;
+      document.querySelectorAll(`[id^="opt_${qi}_"]`).forEach(el => el.classList.remove('selected'));
+      const el = document.getElementById(`opt_${qi}_${oi}`);
+      if (el) el.classList.add('selected');
+    }
+
+    function submitTest(e) {
+      e.preventDefault();
+      submitTestFormInternal();
+    }
+
+    function submitTestFormInternal() {
+      if (!window._takingTest) return;
+      if (testTimerInterval) clearInterval(testTimerInterval);
+      const t = db.tests.find(x => x.id === window._takingTest.testId);
+      if (!t) return;
+      const already = (db.submissions || []).find(s => s.testId === t.id && s.studentId === currentUser.id);
+      if (already) {
+        loadTestsStudent();
+        return;
+      }
+      const answers = window._takingTest.answers;
+      let score = 0;
+      t.questions.forEach((q, qi) => {
+        if (answers[qi] === q.correct) score++;
+      });
+      if (!db.submissions) db.submissions = [];
+      db.submissions.push({
+        id: uid(),
+        testId: t.id,
+        studentId: currentUser.id,
+        answers: { ...answers },
+        score,
+        submittedAt: new Date().toISOString()
+      });
+      saveDB(db);
+      window._takingTest = null;
+      showToast(`Test oddany! Wynik: ${score}/${t.questions.length} (punkty za dobrze zaznaczone)`);
+      loadTestsStudent();
+    }
+
+    // ===== STUDENT VIEWS =====
+    function loadStudentDashboard() {
+      const grades = db.grades.filter(g => g.studentId === currentUser.id);
+      const att = db.attendance.filter(a => a.studentId === currentUser.id);
+      const present = att.filter(a => a.status === 'obecny').length;
+      const absent = att.filter(a => a.status === 'nieobecny').length;
+      const activeTests = (db.tests || []).filter(t => t.active).length;
+      const doneTests = (db.submissions || []).filter(s => s.studentId === currentUser.id).length;
+      document.getElementById('content').innerHTML = `
+        <h4 class="mb-1">Witaj, ${currentUser.firstName}!</h4>
+        <p class="text-muted mb-4">Twoje podsumowanie</p>
+        <div class="row g-3 mb-4">
+          <div class="col-md-3"><div class="card stat-card"><div class="card-body text-center">
+            <div class="fs-2 fw-bold text-primary">${grades.length}</div><div class="text-muted small">Ocen</div>
+          </div></div></div>
+          <div class="col-md-3"><div class="card stat-card"><div class="card-body text-center">
+            <div class="fs-2 fw-bold text-success">${present}</div><div class="text-muted small">Obecności</div>
+          </div></div></div>
+          <div class="col-md-3"><div class="card stat-card"><div class="card-body text-center">
+            <div class="fs-2 fw-bold text-danger">${absent}</div><div class="text-muted small">Nieobecności</div>
+          </div></div></div>
+          <div class="col-md-3"><div class="card stat-card"><div class="card-body text-center">
+            <div class="fs-2 fw-bold text-info">${doneTests}/${activeTests}</div><div class="text-muted small">Testów</div>
+          </div></div></div>
+        </div>
+        <div class="card">
+          <div class="card-header">Ostatnie oceny</div>
+          <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+              <thead><tr><th>Data</th><th>Przedmiot</th><th>Ocena</th><th>Opis</th></tr></thead>
+              <tbody>
+                ${grades.slice(-6).reverse().map(g => {
+                  const sub = db.subjects.find(s => s.id === g.subjectId);
+                  return `<tr>
+                    <td>${g.date}</td>
+                    <td>${sub ? sub.name : '—'}</td>
+                    <td><span class="grade-badge ${gradeClass(g.value)}">${g.value}</span></td>
+                    <td class="text-muted small">${g.description || '—'}</td>
+                  </tr>`;
+                }).join('') || '<tr><td colspan="4" class="text-center text-muted">Brak ocen</td></tr>'}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    function loadMyGrades() {
+      const grades = db.grades.filter(g => g.studentId === currentUser.id);
+      const bySubject = {};
+      grades.forEach(g => {
+        const sub = db.subjects.find(s => s.id === g.subjectId);
+        const name = sub ? sub.name : 'Inne';
+        if (!bySubject[name]) bySubject[name] = [];
+        bySubject[name].push(g);
+      });
+      let html = `<h4 class="mb-4">Moje oceny</h4>`;
+      if (Object.keys(bySubject).length === 0) {
+        html += `<div class="empty-state"><i class="bi bi-star"></i><p>Brak ocen</p></div>`;
+      } else {
+        for (const [subj, list] of Object.entries(bySubject)) {
+          let sum = 0, wsum = 0;
+          list.forEach(g => {
+            let n = parseFloat(String(g.value).replace(',', '.').replace('+', '.25').replace('-', '-.25'));
+            if (!isNaN(n)) { sum += n * (g.weight || 1); wsum += (g.weight || 1); }
+          });
+          const avg = wsum ? (sum / wsum).toFixed(2) : '—';
+          html += `
+            <div class="card mb-3">
+              <div class="card-header d-flex justify-content-between">
+                <span>${subj}</span>
+                <span class="text-muted small">Średnia: <strong>${avg}</strong></span>
+              </div>
+              <div class="card-body">
+                <div class="d-flex flex-wrap gap-2">
+                  ${list.map(g => `
+                    <div class="text-center" title="${g.description || ''} (${g.date})">
+                      <span class="grade-badge ${gradeClass(g.value)}">${g.value}</span>
+                      <div class="small text-muted" style="font-size:.65rem">${g.date.slice(5)}</div>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            </div>`;
+        }
+      }
+      document.getElementById('content').innerHTML = html;
+    }
+
+    function loadMyAttendance() {
+      const att = db.attendance.filter(a => a.studentId === currentUser.id);
+      document.getElementById('content').innerHTML = `
+        <h4 class="mb-4">Moja frekwencja</h4>
+        <div class="card"><div class="card-body p-0">
+          <table class="table table-hover mb-0">
+            <thead><tr><th>Data</th><th>Status</th><th>Lekcja</th><th>Notatka</th></tr></thead>
+            <tbody>
+              ${att.slice().reverse().map(a => `
+                <tr>
+                  <td>${a.date}</td>
+                  <td>${statusBadge(a.status)}</td>
+                  <td>${a.lesson || '—'}</td>
+                  <td class="text-muted small">${a.note || '—'}</td>
+                </tr>
+              `).join('') || '<tr><td colspan="4" class="text-center text-muted py-4">Brak wpisów</td></tr>'}
+            </tbody>
+          </table>
+        </div></div>
+      `;
+    }
+
+    function loadMyRemarks() {
+      const remarks = db.remarks.filter(r => r.studentId === currentUser.id);
+      document.getElementById('content').innerHTML = `
+        <h4 class="mb-4">Moje uwagi i pochwały</h4>
+        <div class="card"><div class="card-body p-0">
+          <table class="table table-hover mb-0">
+            <thead><tr><th>Data</th><th>Typ</th><th>Treść</th></tr></thead>
+            <tbody>
+              ${remarks.slice().reverse().map(r => `
+                <tr>
+                  <td>${r.date}</td>
+                  <td><span class="badge ${r.type === 'pochwała' ? 'bg-success' : 'bg-warning text-dark'}">${r.type}</span></td>
+                  <td>${r.content}</td>
+                </tr>
+              `).join('') || '<tr><td colspan="3" class="text-center text-muted py-4">Brak wpisów</td></tr>'}
+            </tbody>
+          </table>
+        </div></div>
+      `;
+    }
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && document.getElementById('loginForm') && !document.getElementById('loginForm').classList.contains('d-none')) {
+        doLogin();
+      }
+    });
+
+    checkAuth();
+  </script>
+</body>
+</html>
