@@ -2051,5 +2051,28 @@
 
     checkAuth();
   </script>
+  <script type="module">
+  // Import the functions you need from the SDKs you need
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-analytics.js";
+  // TODO: Add SDKs for Firebase products that you want to use
+  // https://firebase.google.com/docs/web/setup#available-libraries
+
+  // Your web app's Firebase configuration
+  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+  const firebaseConfig = {
+    apiKey: "AIzaSyArKkXGEfenE8845CAG1rGZ4F8D3lBBAxs",
+    authDomain: "losowe-paczki-lpp.firebaseapp.com",
+    projectId: "losowe-paczki-lpp",
+    storageBucket: "losowe-paczki-lpp.firebasestorage.app",
+    messagingSenderId: "690500885245",
+    appId: "1:690500885245:web:24d85d94aba8e37488fc94",
+    measurementId: "G-QS4EF6RXK5"
+  };
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app);
+  </script>
 </body>
 </html>
